@@ -1,14 +1,15 @@
 import Cocoa
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private let store = ProfileStore()
+    private var newProfilePanel: NSPanel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // no Dock icon
-
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem.button {
             btn.image = NSImage(
@@ -16,24 +17,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 accessibilityDescription: "Claude Profiles"
             )
         }
-
         buildMenu()
     }
 
-    // MARK: – Menu construction
+    // MARK: – Menu
 
     func buildMenu() {
         let menu = NSMenu()
 
-        // ── header ─────────────────────────────────────────
         let title = NSMenuItem(title: "Claude Profiles", action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
         menu.addItem(.separator())
 
-        // ── profile entries ─────────────────────────────────
         if store.profiles.isEmpty {
-            let empty = NSMenuItem(title: "No profiles — run claude-profiles create", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: "No profiles yet", action: nil, keyEquivalent: "")
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
@@ -44,12 +42,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        // ── actions ─────────────────────────────────────────
+        let newItem = NSMenuItem(title: "New Profile…", action: #selector(openNewProfileWindow), keyEquivalent: "n")
+        newItem.target = self
+        menu.addItem(newItem)
+
+        menu.addItem(.separator())
+
         let refresh = NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r")
         refresh.target = self
         menu.addItem(refresh)
 
-        let manage = NSMenuItem(title: "Manage Profiles…", action: #selector(openTerminal), keyEquivalent: "m")
+        let manage = NSMenuItem(title: "Open Terminal", action: #selector(openTerminal), keyEquivalent: "t")
         manage.target = self
         menu.addItem(manage)
 
@@ -67,12 +70,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let sub = NSMenu()
 
-        let launchDesktop = NSMenuItem(title: "Launch Desktop", action: #selector(launchDesktop(_:)), keyEquivalent: "")
+        let launchDesktop = NSMenuItem(
+            title: profile.isDesktopInstalled ? "Launch Desktop" : "Launch Desktop (setup required)",
+            action: #selector(launchDesktop(_:)),
+            keyEquivalent: ""
+        )
         launchDesktop.representedObject = profile.name
         launchDesktop.target = self
-        if !profile.isDesktopInstalled {
-            launchDesktop.title = "Launch Desktop (setup required)"
-        }
         sub.addItem(launchDesktop)
 
         let launchCode = NSMenuItem(title: "Open Claude Code", action: #selector(launchCode(_:)), keyEquivalent: "")
@@ -82,30 +86,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         sub.addItem(.separator())
 
-        let setupItem = NSMenuItem(title: "Setup Desktop Bundle", action: #selector(setupDesktop(_:)), keyEquivalent: "")
-        setupItem.representedObject = profile.name
-        setupItem.target = self
-        sub.addItem(setupItem)
+        let setup = NSMenuItem(title: "Setup Desktop Bundle", action: #selector(setupDesktop(_:)), keyEquivalent: "")
+        setup.representedObject = profile.name
+        setup.target = self
+        sub.addItem(setup)
 
         item.submenu = sub
         return item
     }
 
-    // MARK: – Actions
+    // MARK: – New Profile window
+
+    @objc private func openNewProfileWindow() {
+        // Bring to front if already open
+        if let panel = newProfilePanel, panel.isVisible {
+            panel.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let panel = NSPanel(
+            contentRect: .zero,
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "New Profile"
+        panel.isReleasedWhenClosed = false
+        panel.level = .floating
+
+        let view = NewProfileView(cliPath: store.claudeProfilesBin()) {
+            panel.close()
+            self.store.reload()
+            self.buildMenu()
+        }
+        panel.contentView = NSHostingView(rootView: view)
+        panel.center()
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        newProfilePanel = panel
+    }
+
+    // MARK: – Profile actions
 
     @objc private func launchDesktop(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String else { return }
-        run("launch", name)
+        run(store.claudeProfilesBin(), "launch", name)
     }
 
     @objc private func launchCode(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String else { return }
-        openTerminalWith("claude-profiles code \(name)")
+        openTerminalWith("\(store.claudeProfilesBin()) code \(name)")
     }
 
     @objc private func setupDesktop(_ sender: NSMenuItem) {
         guard let name = sender.representedObject as? String else { return }
-        openTerminalWith("claude-profiles setup \(name) && echo '— done —'")
+        openTerminalWith("\(store.claudeProfilesBin()) setup \(name) && echo '✓ Done'")
     }
 
     @objc private func refresh(_ sender: Any) {
@@ -114,16 +150,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openTerminal(_ sender: Any) {
-        openTerminalWith("claude-profiles list")
+        openTerminalWith("\(store.claudeProfilesBin()) list")
     }
 
     // MARK: – Helpers
 
-    private func run(_ subcommand: String, _ arg: String) {
-        let cli = store.claudeProfilesBin()
+    private func run(_ args: String...) {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        task.arguments = [cli, subcommand, arg]
+        task.arguments = args
         try? task.run()
     }
 
