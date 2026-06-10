@@ -18,6 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
         }
         buildMenu()
+
+        // On first launch with no profiles, pop the form open automatically
+        if store.profiles.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                self.openNewProfileWindow()
+            }
+        }
     }
 
     // MARK: – Menu
