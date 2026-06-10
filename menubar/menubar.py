@@ -92,7 +92,7 @@ def _open_terminal(cmd: str) -> None:
 
 class ClaudeProfilesApp(rumps.App):
 
-    ICON_IDLE   = "👤"
+    ICON_IDLE   = "◉ Profiles"
     ICON_SYNC   = "⟳ "
     ICON_ALERT  = "👤⚠️"
 
