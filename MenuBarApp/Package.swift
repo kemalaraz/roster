@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -8,8 +8,10 @@ let package = Package(
         .executableTarget(
             name: "ClaudeProfiles",
             path: "Sources/ClaudeProfiles",
-            resources: [
-                .process("Resources")
+            swiftSettings: [
+                // Use Swift 5 language mode to avoid Swift 6 strict concurrency
+                // errors in AppKit/NSApplication code. Upgrade incrementally.
+                .swiftLanguageMode(.v5)
             ]
         )
     ]
