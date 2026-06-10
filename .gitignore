@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Swift / Xcode
+MenuBarApp/.build/
+MenuBarApp/*.resolved
+*.xcuserstate
+DerivedData/
+
+# macOS
+.DS_Store
+*.swp
+
+# Local venv
+.venv/
+venv/
+env/

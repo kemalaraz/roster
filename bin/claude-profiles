@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""Thin shim so the binary works both from the repo and after pip install."""
+import sys
+import os
+
+# Allow running directly from the repo root without installing
+_repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _repo not in sys.path:
+    sys.path.insert(0, _repo)
+
+from claude_profiles.cli import main
+main()
