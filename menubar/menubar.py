@@ -80,12 +80,18 @@ def _update_pending() -> Optional[tuple[str, str]]:
 
 
 def _open_terminal(cmd: str) -> None:
-    safe = cmd.replace('"', '\\"')
-    script = (
-        f'tell application "Terminal" to activate\n'
-        f'tell application "Terminal" to do script "{safe}"'
-    )
-    subprocess.run(["osascript", "-e", script])
+    ghostty = Path("/Applications/Ghostty.app")
+    if ghostty.exists():
+        subprocess.Popen(
+            [str(ghostty / "Contents/MacOS/ghostty"), f"--command=bash -lc '{cmd}; exec bash'"],
+        )
+    else:
+        safe = cmd.replace('"', '\\"')
+        script = (
+            f'tell application "Terminal" to activate\n'
+            f'tell application "Terminal" to do script "{safe}"'
+        )
+        subprocess.run(["osascript", "-e", script])
 
 
 # ── App ────────────────────────────────────────────────────────────────────────

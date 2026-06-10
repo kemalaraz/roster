@@ -45,9 +45,9 @@ class DesktopManager:
         dest = profile.app_path
         if dest.exists():
             if not force:
-                # Just re-patch — preserves any manual tweaks
                 self._patch_plist(dest, profile)
                 self._strip_signature(dest)
+                self._remove_quarantine(dest)
                 return dest
             shutil.rmtree(dest)
 
@@ -62,8 +62,9 @@ class DesktopManager:
         if not profile.app_path.exists():
             print(f"App bundle not found — setting up for '{profile.display_name}' …")
             self.setup(profile)
+        self._remove_quarantine(profile.app_path)
         subprocess.Popen(
-            ["open", str(profile.app_path)],
+            ["open", "-n", str(profile.app_path)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
