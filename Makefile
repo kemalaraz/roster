@@ -7,8 +7,7 @@ app:
 # Build + install + strip quarantine + launch — the full first-time setup
 install-app: app
 	@echo "→ Stopping any running instance…"
-	@pkill -f "menubar/menubar.py" 2>/dev/null || true
-	@pkill -f "Claude Profiles" 2>/dev/null || true
+	@pkill -f "Claude Profiles.app" 2>/dev/null || true
 	@sleep 1
 	@echo "→ Copying to /Applications/…"
 	@rm -rf "/Applications/Claude Profiles.app"
@@ -18,7 +17,7 @@ install-app: app
 	@echo "→ Launching…"
 	@open "/Applications/Claude Profiles.app"
 	@sleep 2
-	@pgrep -f "menubar" > /dev/null && echo "✓ Claude Profiles is running — look for the icon in your menu bar" || echo "✗ App did not start, check Console.app for errors"
+	@sleep 1 && pgrep -f "Claude Profiles.app" > /dev/null && echo "✓ Claude Profiles is running — look for the icon in your menu bar" || echo "✗ App did not start, check Console.app for errors"
 
 # ── CLI-only install (no Swift build needed) ──────────────────────────────────
 install:
