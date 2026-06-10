@@ -1,8 +1,8 @@
 .PHONY: app install uninstall clean lint test
 
-# ── Primary target: build the distributable .app ──────────────────────────────
+# ── Primary target: build standalone .app via py2app ─────────────────────────
 app:
-	bash build-app.sh
+	conda run -n claude-profiles python setup_app.py py2app
 
 # Install the .app to /Applications after building
 install-app: app
@@ -18,7 +18,7 @@ uninstall:
 	bash uninstall.sh
 
 clean:
-	rm -rf MenuBarApp/.build dist __pycache__ *.egg-info claude_profiles/__pycache__
+	rm -rf MenuBarApp/.build dist build __pycache__ *.egg-info claude_profiles/__pycache__ claude_profiles.egg-info
 
 lint:
 	python3 -m ruff check claude_profiles/ 2>/dev/null || true
