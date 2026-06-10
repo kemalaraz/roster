@@ -10,17 +10,32 @@ gymnastics.
 
 ## Install
 
-> Requires Xcode Command Line Tools (`xcode-select --install`) and Python 3 (ships with macOS).
+> Requires [Conda](https://docs.conda.io/en/latest/miniconda.html) (Miniconda or Anaconda).
+
+**1. Clone and set up the build environment:**
 
 ```bash
 git clone https://github.com/kemalaraz/claude-profiles
 cd claude-profiles
-make app                     # builds dist/Claude Profiles.app
+conda create -n claude-profiles python=3.11 -y
+conda run -n claude-profiles pip install rumps pyobjc py2app
+```
+
+**2. Build the standalone app:**
+
+```bash
+make app                     # → dist/Claude Profiles.app
+```
+
+**3. Install and launch:**
+
+```bash
 cp -r "dist/Claude Profiles.app" /Applications/
+xattr -c "/Applications/Claude Profiles.app"   # bypass Gatekeeper
 open "/Applications/Claude Profiles.app"
 ```
 
-That's it. The menu bar icon appears. Click it.
+The menu bar icon appears. Click it.
 
 ---
 
@@ -175,21 +190,26 @@ preserved across syncs.
 ## Building from source
 
 ```bash
-# Requirements: Xcode CLT, Python 3
-xcode-select --install        # if not already installed
+# Requirements: Conda (Miniconda or Anaconda)
+conda create -n claude-profiles python=3.11 -y
+conda run -n claude-profiles pip install rumps pyobjc py2app
 
 make app                      # → dist/Claude Profiles.app
 make install-app              # build + copy to /Applications
 make clean                    # remove build artifacts
+
+# Regenerate the app icon
+conda run -n claude-profiles python scripts/make_icon.py
 ```
 
 ---
 
 ## FAQ
 
-**Do I need Python installed separately?**
-No. The `.app` bundles the Python scripts inside itself. Python 3 ships with
-macOS and is only invoked at runtime, not at install time.
+**Do I need Python or Conda after the app is built?**
+No. Once you've run `make app`, the resulting `.app` is fully self-contained —
+Python and all dependencies are bundled inside it. Conda is only needed to
+build from source.
 
 **Does this work on Apple Silicon and Intel?**
 Yes. The app bundle copies Claude.app as-is, preserving the universal binary.
