@@ -5,26 +5,118 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
-    private let store = ProfileStore()
+    private let store        = ProfileStore()
+    private let updateChecker = UpdateChecker()
     private var newProfilePanel: NSPanel?
+    private var isSyncing = false
+
+    // MARK: – Launch
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory) // no Dock icon
+        NSApp.setActivationPolicy(.accessory)
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let btn = statusItem.button {
-            btn.image = NSImage(
-                systemSymbolName: "person.3.fill",
-                accessibilityDescription: "Claude Profiles"
-            )
-        }
+        setStatusIcon(syncing: false)
         buildMenu()
 
-        // On first launch with no profiles, pop the form open automatically
+        // Auto-open New Profile window on very first launch
         if store.profiles.isEmpty {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 self.openNewProfileWindow()
             }
         }
+
+        // Start watching for Claude Desktop updates
+        updateChecker.onUpdateDetected = { [weak self] old, new in
+            self?.promptForSync(from: old, to: new)
+        }
+        updateChecker.startMonitoring()
+    }
+
+    // MARK: – Update alert
+
+    private func promptForSync(from oldVersion: String, to newVersion: String) {
+        guard !isSyncing else { return }
+
+        let installedCount = store.profiles.filter { $0.isDesktopInstalled }.count
+        let profileWord = installedCount == 1 ? "profile" : "profiles"
+
+        let alert = NSAlert()
+        alert.messageText = "Claude Desktop Updated"
+        alert.informativeText = """
+            Claude Desktop was updated from v\(oldVersion) to v\(newVersion).
+
+            You have \(installedCount) Desktop \(profileWord) that need to be synced to keep working with the new version.
+            """
+        alert.alertStyle = .informational
+        alert.icon = NSImage(systemSymbolName: "arrow.triangle.2.circlepath.circle.fill",
+                             accessibilityDescription: nil)
+
+        alert.addButton(withTitle: "Sync Now")          // .alertFirstButtonReturn
+        alert.addButton(withTitle: "Later")             // .alertSecondButtonReturn
+        alert.addButton(withTitle: "Skip This Version") // .alertThirdButtonReturn
+
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+
+        switch response {
+        case .alertFirstButtonReturn:
+            runSync(newVersion: newVersion)
+        case .alertThirdButtonReturn:
+            // Mark synced without actually syncing — user explicitly doesn't want it
+            updateChecker.markSynced(version: newVersion)
+        default:
+            break // "Later" — will prompt again next time the app checks
+        }
+    }
+
+    // MARK: – Sync
+
+    private func runSync(newVersion: String) {
+        guard !isSyncing else { return }
+        isSyncing = true
+        setStatusIcon(syncing: true)
+
+        let cli = store.claudeProfilesBin()
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = self.shell(cli, "sync")
+
+            DispatchQueue.main.async {
+                self.isSyncing = false
+                self.setStatusIcon(syncing: false)
+
+                if result.status == 0 {
+                    self.updateChecker.markSynced(version: newVersion)
+                    self.showSyncComplete(version: newVersion)
+                } else {
+                    self.showSyncError(output: result.output)
+                }
+
+                self.store.reload()
+                self.buildMenu()
+            }
+        }
+    }
+
+    private func showSyncComplete(version: String) {
+        let alert = NSAlert()
+        alert.messageText = "Sync Complete"
+        alert.informativeText = "All profile app bundles have been updated to Claude v\(version)."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
+    private func showSyncError(output: String) {
+        let alert = NSAlert()
+        alert.messageText = "Sync Failed"
+        alert.informativeText = "An error occurred while syncing profiles.\n\n\(output)\n\nYou can try again manually: claude-profiles sync"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     // MARK: – Menu
@@ -35,6 +127,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let title = NSMenuItem(title: "Claude Profiles", action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
+
+        // Show pending update badge if detected
+        if let installed = updateChecker.currentInstalledVersion(),
+           let synced    = updateChecker.syncedVersion(),
+           installed != synced {
+            let badge = NSMenuItem(
+                title: "⚠️  Update detected (v\(installed)) — sync needed",
+                action: #selector(manualSync),
+                keyEquivalent: ""
+            )
+            badge.target = self
+            menu.addItem(badge)
+        }
+
         menu.addItem(.separator())
 
         if store.profiles.isEmpty {
@@ -54,6 +160,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(newItem)
 
         menu.addItem(.separator())
+
+        let syncItem = NSMenuItem(
+            title: isSyncing ? "Syncing…" : "Sync Profiles",
+            action: isSyncing ? nil : #selector(manualSync),
+            keyEquivalent: "s"
+        )
+        syncItem.target = self
+        menu.addItem(syncItem)
 
         let refresh = NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r")
         refresh.target = self
@@ -102,10 +216,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
+    // MARK: – Status icon
+
+    private func setStatusIcon(syncing: Bool) {
+        guard let btn = statusItem.button else { return }
+        if syncing {
+            btn.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath",
+                                accessibilityDescription: "Syncing profiles…")
+        } else {
+            btn.image = NSImage(systemSymbolName: "person.3.fill",
+                                accessibilityDescription: "Claude Profiles")
+        }
+    }
+
     // MARK: – New Profile window
 
     @objc private func openNewProfileWindow() {
-        // Bring to front if already open
         if let panel = newProfilePanel, panel.isVisible {
             panel.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -151,6 +277,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         openTerminalWith("\(store.claudeProfilesBin()) setup \(name) && echo '✓ Done'")
     }
 
+    @objc private func manualSync() {
+        guard let installed = updateChecker.currentInstalledVersion() else { return }
+        runSync(newVersion: installed)
+    }
+
     @objc private func refresh(_ sender: Any) {
         store.reload()
         buildMenu()
@@ -167,6 +298,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         task.arguments = args
         try? task.run()
+    }
+
+    private func shell(_ args: String...) -> (output: String, status: Int32) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        p.arguments = args
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError  = pipe
+        try? p.run()
+        p.waitUntilExit()
+        let out = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        return (out.trimmingCharacters(in: .whitespacesAndNewlines), p.terminationStatus)
     }
 
     private func openTerminalWith(_ cmd: String) {

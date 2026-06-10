@@ -34,6 +34,8 @@ def _require_profile(pm: ProfileManager, name: str):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def cmd_list(pm: ProfileManager, **_):
+    dm = DesktopManager()
+    _warn_if_update_pending(dm)
     profiles = pm.list()
     if not profiles:
         print("No profiles yet. Create one:\n  claude-profiles create work --emoji 💼")
@@ -47,6 +49,14 @@ def cmd_list(pm: ProfileManager, **_):
         code    = "✓" if p.is_code_initialized  else "·"
         print(f"  {p.name:<18} {p.emoji} {p.display_name:<{w-2}} {desktop:^8} {code:^6}")
     print()
+
+
+def _warn_if_update_pending(dm: DesktopManager) -> None:
+    pending = dm.update_available()
+    if pending:
+        old, new = pending
+        print(f"⚠️  Claude Desktop updated: v{old} → v{new}. Run: claude-profiles sync")
+        print()
 
 
 def cmd_create(pm: ProfileManager, args, **_):
@@ -171,6 +181,7 @@ def cmd_open(pm: ProfileManager, **_):
 
 def cmd_status(pm: ProfileManager, **_):
     dm = DesktopManager()
+    _warn_if_update_pending(dm)
     profiles = pm.list()
     if not profiles:
         print("No profiles.")

@@ -6,14 +6,19 @@ sandbox (Keychain + Application Support) per bundle ID, so each profile gets
 its own login session.
 """
 from __future__ import annotations
+import json
 import plistlib
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .profile import Profile, CLAUDE_APP_SOURCE, USER_APPS_DIR
+from .profile import Profile, CLAUDE_APP_SOURCE, USER_APPS_DIR, PROFILES_DIR
+
+# Shared with the Swift menu bar app — both sides read/write this file.
+_VERSION_FILE = PROFILES_DIR / "claude-version.json"
 
 
 def _run(cmd: list[str], check=False) -> subprocess.CompletedProcess:
@@ -70,6 +75,10 @@ class DesktopManager:
                 print(f"  Syncing '{p.display_name}' …")
                 self.setup(p, force=True)
                 print(f"  ✓ {p.app_name}")
+        # Record synced version so the menu bar app (and next CLI run) knows we're up to date.
+        version = self.source_version()
+        if version:
+            self.write_synced_version(version)
 
     def source_version(self) -> Optional[str]:
         plist_path = self.source / "Contents" / "Info.plist"
@@ -78,6 +87,33 @@ class DesktopManager:
         with open(plist_path, "rb") as f:
             plist = plistlib.load(f)
         return plist.get("CFBundleShortVersionString")
+
+    # ── Version tracking (shared with menu bar app) ───────────────
+
+    def synced_version(self) -> Optional[str]:
+        """Return the last version that was synced, or None if never synced."""
+        if not _VERSION_FILE.exists():
+            return None
+        try:
+            data = json.loads(_VERSION_FILE.read_text())
+            return data.get("synced_version")
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def write_synced_version(self, version: str) -> None:
+        _VERSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _VERSION_FILE.write_text(json.dumps({
+            "synced_version": version,
+            "last_synced": datetime.now(timezone.utc).isoformat(),
+        }, indent=2))
+
+    def update_available(self) -> Optional[tuple[str, str]]:
+        """Return (synced_version, installed_version) if an update is pending, else None."""
+        installed = self.source_version()
+        synced    = self.synced_version()
+        if installed and synced and installed != synced:
+            return (synced, installed)
+        return None
 
     def is_running(self, profile: Profile) -> bool:
         r = _run(["pgrep", "-f", profile.bundle_id])
