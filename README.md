@@ -21,21 +21,13 @@ conda create -n claude-profiles python=3.11 -y
 conda run -n claude-profiles pip install rumps pyobjc py2app
 ```
 
-**2. Build the standalone app:**
+**2. Build, install, and launch:**
 
 ```bash
-make app                     # → dist/Claude Profiles.app
+make install-app
 ```
 
-**3. Install and launch:**
-
-```bash
-cp -r "dist/Claude Profiles.app" /Applications/
-xattr -c "/Applications/Claude Profiles.app"   # bypass Gatekeeper
-open "/Applications/Claude Profiles.app"
-```
-
-The menu bar icon appears. Click it.
+That's it. `make install-app` builds the app, copies it to `/Applications/`, clears the Gatekeeper quarantine flag, and launches it. The menu bar icon appears — click it.
 
 ---
 

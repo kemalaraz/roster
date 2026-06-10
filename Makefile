@@ -1,14 +1,24 @@
-.PHONY: app install uninstall clean lint test
+.PHONY: app install-app launch uninstall clean lint test
 
 # ── Primary target: build standalone .app via py2app ─────────────────────────
 app:
 	conda run -n claude-profiles python setup_app.py py2app
 
-# Install the .app to /Applications after building
+# Build + install + strip quarantine + launch — the full first-time setup
 install-app: app
-	@cp -r "dist/Claude Profiles.app" /Applications/
-	@echo "✓ Installed to /Applications/Claude Profiles.app"
-	@echo "  Open it from Launchpad or: open /Applications/Claude\\ Profiles.app"
+	@echo "→ Stopping any running instance…"
+	@pkill -f "menubar/menubar.py" 2>/dev/null || true
+	@pkill -f "Claude Profiles" 2>/dev/null || true
+	@sleep 1
+	@echo "→ Copying to /Applications/…"
+	@rm -rf "/Applications/Claude Profiles.app"
+	@cp -r "dist/Claude Profiles.app" "/Applications/Claude Profiles.app"
+	@echo "→ Clearing Gatekeeper quarantine…"
+	@find "/Applications/Claude Profiles.app" -print0 | xargs -0 xattr -c 2>/dev/null || true
+	@echo "→ Launching…"
+	@open "/Applications/Claude Profiles.app"
+	@sleep 2
+	@pgrep -f "menubar" > /dev/null && echo "✓ Claude Profiles is running — look for the icon in your menu bar" || echo "✗ App did not start, check Console.app for errors"
 
 # ── CLI-only install (no Swift build needed) ──────────────────────────────────
 install:
