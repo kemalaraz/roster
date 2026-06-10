@@ -133,7 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            let synced    = updateChecker.syncedVersion(),
            installed != synced {
             let badge = NSMenuItem(
-                title: "⚠️  Update detected (v\(installed)) — sync needed",
+                title: "⚠️  Claude v\(synced) → v\(installed) — Click to sync",
                 action: #selector(manualSync),
                 keyEquivalent: ""
             )
