@@ -29,6 +29,7 @@ OPTIONS = {
     "semi_standalone": False,   # bundle Python itself — fully standalone
     "site_packages": True,
     "frameworks": [f"{CONDA_LIB}/{lib}" for lib in _FRAMEWORKS],
+    "iconfile": "resources/icon.icns",
     "plist": {
         "CFBundleName":           "Claude Profiles",
         "CFBundleDisplayName":    "Claude Profiles",
