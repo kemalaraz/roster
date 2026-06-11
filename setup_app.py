@@ -64,8 +64,8 @@ OPTIONS = {
     ],
     # Bundle the CLI scripts alongside the Python app
     "resources": [
-        ("bin",             ["bin/claude-profiles"]),
-        ("claude_profiles", ["claude_profiles"]),   # for the bundled CLI
+        ("bin", ["bin/claude-profiles"]),
+        (".",   ["claude_profiles"]),  # puts claude_profiles/ directly under Resources/
     ],
 }
 

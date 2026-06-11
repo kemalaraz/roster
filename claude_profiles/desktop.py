@@ -63,8 +63,13 @@ class DesktopManager:
             print(f"App bundle not found — setting up for '{profile.display_name}' …")
             self.setup(profile)
         self._remove_quarantine(profile.app_path)
+        # Pass --user-data-dir so each profile gets its own Electron userData path.
+        # Claude Desktop hardcodes the path otherwise; all profiles would share one session.
+        user_data = (
+            Path.home() / "Library" / "Application Support" / f"Claude-{profile.name}"
+        )
         subprocess.Popen(
-            ["open", "-n", str(profile.app_path)],
+            ["open", "-n", str(profile.app_path), "--args", f"--user-data-dir={user_data}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -126,22 +131,68 @@ class DesktopManager:
 
     @staticmethod
     def _patch_plist(app: Path, profile: Profile) -> None:
+        # Electron derives helper paths AND userData dir from CFBundleName.
+        # We must use a unique, filesystem-safe name per profile so that:
+        #   - Electron finds renamed helpers: Frameworks/{internal} Helper.app
+        #   - userData lands in ~/Library/Application Support/{internal}
+        # CFBundleDisplayName is what the Dock/Finder actually shows.
+        internal = f"Claude-{profile.name}"
+
         plist_path = app / "Contents" / "Info.plist"
         with open(plist_path, "rb") as f:
             plist = plistlib.load(f)
 
         plist["CFBundleIdentifier"]  = profile.bundle_id
-        plist["CFBundleName"]        = profile.app_name
+        plist["CFBundleName"]        = internal
         plist["CFBundleDisplayName"] = profile.app_name
 
         with open(plist_path, "wb") as f:
             plistlib.dump(plist, f)
 
+        DesktopManager._rename_helpers(app, internal, profile.bundle_id)
+
+    @staticmethod
+    def _rename_helpers(app: Path, new_name: str, bundle_id_base: str) -> None:
+        """Rename Electron helpers from 'Claude Helper*' to '{new_name} Helper*'."""
+        frameworks = app / "Contents" / "Frameworks"
+        if not frameworks.exists():
+            return
+        for helper_app in sorted(frameworks.glob("Claude Helper*.app")):
+            suffix   = helper_app.stem[len("Claude Helper"):]  # "", " (GPU)", etc.
+            new_stem = f"{new_name} Helper{suffix}"
+            new_app  = frameworks / f"{new_stem}.app"
+
+            macos_dir = helper_app / "Contents" / "MacOS"
+            old_bin = macos_dir / f"Claude Helper{suffix}"
+            if old_bin.exists():
+                old_bin.rename(macos_dir / new_stem)
+
+            hp = helper_app / "Contents" / "Info.plist"
+            if hp.exists():
+                with open(hp, "rb") as f:
+                    hplist = plistlib.load(f)
+                hplist["CFBundleExecutable"]  = new_stem
+                hplist["CFBundleName"]        = new_name
+                hplist["CFBundleDisplayName"] = new_name
+                hplist["CFBundleIdentifier"]  = f"{bundle_id_base}.helper"
+                with open(hp, "wb") as f:
+                    plistlib.dump(hplist, f)
+
+            helper_app.rename(new_app)
+
     @staticmethod
     def _strip_signature(app: Path) -> None:
-        # Signature is invalid after plist edit; remove it so macOS doesn't reject the app.
-        _run(["codesign", "--remove-signature", str(app)])
+        # Re-sign with ad-hoc identity after plist edit.
+        # Must sign inside-out: nested .app/.framework bundles first, outer app last.
+        # --deep alone doesn't descend into nested .app bundles inside Frameworks/.
+        for nested in sorted(app.rglob("*.app")) + sorted(app.rglob("*.framework")):
+            _run(["codesign", "--sign", "-", "--force", str(nested)])
+        _run(["codesign", "--sign", "-", "--force", str(app)])
 
     @staticmethod
     def _remove_quarantine(app: Path) -> None:
-        _run(["xattr", "-cr", str(app)])
+        # xattr -r is not available on all macOS versions; use find | xargs instead
+        subprocess.run(
+            f'find {str(app)!r} -print0 | xargs -0 xattr -c 2>/dev/null || true',
+            shell=True,
+        )

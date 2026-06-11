@@ -80,11 +80,9 @@ def _update_pending() -> Optional[tuple[str, str]]:
 
 
 def _open_terminal(cmd: str) -> None:
-    ghostty = Path("/Applications/Ghostty.app")
-    if ghostty.exists():
-        subprocess.Popen(
-            [str(ghostty / "Contents/MacOS/ghostty"), f"--command=bash -lc '{cmd}; exec bash'"],
-        )
+    ghostty_bin = Path("/Applications/Ghostty.app/Contents/MacOS/ghostty")
+    if ghostty_bin.exists():
+        subprocess.Popen([str(ghostty_bin), "-e", "bash", "-lc", f"{cmd}; exec bash"])
     else:
         safe = cmd.replace('"', '\\"')
         script = (
