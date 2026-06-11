@@ -8,6 +8,7 @@ app:
 install-app: app
 	@echo "→ Stopping any running instance…"
 	@pkill -f "Claude Profiles.app" 2>/dev/null || true
+	@pkill -f "dist/Claude Profiles" 2>/dev/null || true
 	@sleep 1
 	@echo "→ Copying to /Applications/…"
 	@rm -rf "/Applications/Claude Profiles.app"
