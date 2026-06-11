@@ -7,26 +7,24 @@
     <key>CFBundleDisplayName</key>
     <string>Claude Profiles</string>
     <key>CFBundleIdentifier</key>
-    <string>com.claudeprofiles.menubar</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>com.claudeprofiles.app</string>
     <key>CFBundleExecutable</key>
     <string>ClaudeProfiles</string>
+    <key>CFBundleIconFile</key>
+    <string>icon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSAppleScriptEnabled</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>MIT License</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>MIT License</string>
 </dict>
 </plist>
