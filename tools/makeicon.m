@@ -1,5 +1,5 @@
 // makeicon.m — render the app icon at 1024×1024 (native, no Python).
-// Design: a teal-green Apple-style squircle (superellipse) with a soft drop
+// Design: a dark mallard green-blue Apple-style squircle (superellipse) with a soft drop
 // shadow, a fanned stack of three "profile" cards, and a clean app-agnostic avatar
 // on the front card. Sized to match macOS system icons. Writes a PNG to argv[1].
 //
@@ -71,7 +71,7 @@ static void drawCard(CGContextRef c, CGFloat cx, CGFloat cy, CGFloat deg,
     CGContextSaveGState(c);
     CGContextTranslateCTM(c, cx, cy);
     CGContextRotateCTM(c, deg * M_PI / 180.0);
-    CGContextSetShadowWithColor(c, CGSizeMake(0, -9), 24, rgb(0.02, 0.16, 0.12, 0.32));
+    CGContextSetShadowWithColor(c, CGSizeMake(0, -9), 24, rgb(0.01, 0.10, 0.08, 0.34));
     CGPathRef card = roundedRect(CGRectMake(-w/2, -h/2, w, h), 54);
     CGContextSetFillColorWithColor(c, rgb(0.980, 0.975, 1.000, alpha));
     CGContextAddPath(c, card);
@@ -91,19 +91,19 @@ int main(int argc, const char *argv[]) {
 
     // ── Soft contact shadow under the squircle (like system icons) ──────────
     CGContextSaveGState(c);
-    CGContextSetShadowWithColor(c, CGSizeMake(0, -14), 30, rgb(0.02, 0.13, 0.10, 0.30));
+    CGContextSetShadowWithColor(c, CGSizeMake(0, -14), 30, rgb(0.01, 0.09, 0.07, 0.32));
     CGContextAddPath(c, squircle);
-    CGContextSetFillColorWithColor(c, rgb(0.05, 0.45, 0.36, 1));   // placeholder fill → casts shadow
+    CGContextSetFillColorWithColor(c, rgb(0.10, 0.30, 0.25, 1));   // placeholder fill → casts shadow
     CGContextFillPath(c);
     CGContextRestoreGState(c);
 
-    // ── Squircle fill: violet→indigo vertical gradient ──────────────────────
+    // ── Squircle fill: mallard-green vertical gradient ──────────────────────
     CGContextSaveGState(c);
     CGContextAddPath(c, squircle);
     CGContextClip(c);
     CGFloat locs[2] = {0.0, 1.0};
-    CGColorRef gcols[2] = { rgb(0.098, 0.745, 0.592, 1),   // bright teal-green (top)
-                            rgb(0.039, 0.420, 0.341, 1) }; // deep teal (bottom)
+    CGColorRef gcols[2] = { rgb(0.169, 0.478, 0.400, 1),   // mallard green-blue (top)
+                            rgb(0.063, 0.220, 0.184, 1) }; // deep mallard (bottom)
     CFArrayRef arr = CFArrayCreate(NULL, (const void **)gcols, 2, &kCFTypeArrayCallBacks);
     CGGradientRef grad = CGGradientCreateWithColors(cs, arr, locs);
     CGContextDrawLinearGradient(c, grad, CGPointMake(0, S), CGPointMake(0, 0), 0);
@@ -122,7 +122,7 @@ int main(int argc, const char *argv[]) {
     drawCard(c, cx,       524,   0, cw, ch, 1.00);   // front
 
     // ── Avatar on the front card ────────────────────────────────────────────
-    addAvatar(c, cx, rgb(0.059, 0.643, 0.498, 1));   // #0FA47F teal-green accent
+    addAvatar(c, cx, rgb(0.102, 0.361, 0.298, 1));   // #1A5C4C mallard green accent
 
     // ── Encode PNG ──────────────────────────────────────────────────────────
     CGImageRef img = CGBitmapContextCreateImage(c);

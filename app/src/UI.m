@@ -7,13 +7,13 @@
 static NSColor *CPColor(int r, int g, int b) {
     return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
 }
-static NSColor *CPAccent(void)    { return CPColor( 15, 164, 127); } // #0FA47F teal green
-static NSColor *CPAccentDeep(void){ return CPColor( 11, 125,  96); } // #0B7D60 pressed/deep
-static NSColor *CPBg(void)        { return CPColor(212, 238, 230); } // soft teal wash (matches backdrop top)
-static NSColor *CPSurface(void)   { return CPColor(251, 254, 253); } // #FBFEFD card surface
-static NSColor *CPBorder(void)    { return CPColor(210, 232, 224); } // #D2E8E0 teal hairline
-static NSColor *CPInk(void)       { return CPColor( 28,  46,  41); } // #1C2E29 deep teal-charcoal text
-static NSColor *CPInkSoft(void)   { return CPColor(104, 124, 118); } // #687C76 secondary text
+static NSColor *CPAccent(void)    { return CPColor( 26,  92,  76); } // #1A5C4C dark mallard green-blue
+static NSColor *CPAccentDeep(void){ return CPColor( 18,  63,  52); } // #123F34 pressed/deep
+static NSColor *CPBg(void)        { return CPColor(212, 230, 222); } // soft mallard wash (matches backdrop top)
+static NSColor *CPSurface(void)   { return CPColor(251, 254, 252); } // #FBFEFC card surface
+static NSColor *CPBorder(void)    { return CPColor(201, 222, 213); } // #C9DED5 mallard hairline
+static NSColor *CPInk(void)       { return CPColor( 22,  38,  31); } // #16261F deep green-charcoal text
+static NSColor *CPInkSoft(void)   { return CPColor( 92, 110, 102); } // #5C6E66 secondary text
 
 // A filled accent "primary" button, fully custom-drawn. Drawing the fill and label
 // ourselves (instead of bezelColor + a manual white attributedTitle) means the color
@@ -54,7 +54,7 @@ static NSColor *CPInkSoft(void)   { return CPColor(104, 124, 118); } // #687C76 
     return NSMakeSize(ceil(s.width) + 26, 28);
 }
 - (void)drawRect:(NSRect)dirtyRect {
-    NSColor *fill = self.isHighlighted ? CPColor(224, 242, 236) : CPSurface();
+    NSColor *fill = self.isHighlighted ? CPColor(216, 233, 226) : CPSurface();
     NSRect b = NSInsetRect(self.bounds, 0.5, 0.5);
     NSBezierPath *p = [NSBezierPath bezierPathWithRoundedRect:b xRadius:6 yRadius:6];
     [fill setFill]; [p fill];
@@ -91,11 +91,11 @@ static NSButton *CPSecondaryButton(NSString *title, id target, SEL action) {
 @interface CPBackgroundView : NSView @end
 @implementation CPBackgroundView
 - (void)drawRect:(NSRect)dirtyRect {
-    // Soft teal-green wash, in the family of the app's teal accent (#0FA47F).
-    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(212, 238, 230)
-                                                  endingColor:CPColor(234, 246, 242)];
+    // Soft mallard-green wash, in the family of the app's dark green accent (#1A5C4C).
+    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(210, 228, 220)
+                                                  endingColor:CPColor(232, 243, 238)];
     [g drawInRect:self.bounds angle:-90];
-    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.18];
+    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.12];
     NSGradient *rg = [[NSGradient alloc] initWithStartingColor:glow
                                                    endingColor:[CPAccent() colorWithAlphaComponent:0]];
     NSPoint ctr = NSMakePoint(NSWidth(self.bounds) * 0.82, NSHeight(self.bounds) * 0.90);
