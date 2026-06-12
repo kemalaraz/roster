@@ -121,7 +121,9 @@
 }
 
 - (BOOL)isDesktopInstalled {
-    return [[NSFileManager defaultManager] fileExistsAtPath:[self appBundlePath]];
+    // Genuine-app model: a profile can launch Desktop whenever its source app is
+    // installed (no per-profile copied bundle exists anymore).
+    return [[self app] isAvailable];
 }
 
 - (BOOL)isCodeInitialized {

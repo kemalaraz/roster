@@ -51,6 +51,11 @@ static NSString *ShQuote(NSString *s) {
 // ── DesktopManager ────────────────────────────────────────────────────────────
 @implementation DesktopManager
 
+// New model: we do NOT copy or re-sign the app. Isolating a profile only requires
+// a per-profile --user-data-dir; the app itself stays the genuine, notarized
+// /Applications/<App>.app. This keeps Cowork working (it verifies the app's genuine
+// code signature) and avoids the recurring "Launchd job spawn failed" breakage that
+// re-signing caused. setup() just ensures the data dir and removes any legacy copy.
 - (nullable NSString *)setup:(Profile *)profile force:(BOOL)force error:(NSError **)error {
     AppDescriptor *app = [profile app];
     NSFileManager *fm = [NSFileManager defaultManager];
@@ -61,52 +66,36 @@ static NSString *ShQuote(NSString *s) {
                 @"%@ not found at %@", app.displayName, app.sourcePath]}];
         return nil;
     }
-    [fm createDirectoryAtPath:[Paths userAppsDir] withIntermediateDirectories:YES attributes:nil error:nil];
+    [fm createDirectoryAtPath:[profile userDataDir] withIntermediateDirectories:YES attributes:nil error:nil];
 
-    NSString *dest = [profile appBundlePath];
-    BOOL exists = [fm fileExistsAtPath:dest];
+    // Clean up any bundle left over from the old copy-and-re-sign approach — it had a
+    // broken/ad-hoc signature and would break Cowork if launched.
+    NSString *legacy = [profile appBundlePath];
+    if ([fm fileExistsAtPath:legacy]) [fm removeItemAtPath:legacy error:nil];
 
-    if (exists && !force) {
-        // Re-apply patches/signature to an existing bundle without re-copying.
-        [self _patchOuterPlist:dest profile:profile];
-        [self _renameHelpers:dest profile:profile];
-        [self _signInsideOut:dest];
-        [self _clearQuarantine:dest];
-        return dest;
-    }
-    if (exists) [fm removeItemAtPath:dest error:nil];
-
-    NSError *cpErr = nil;
-    if (![fm copyItemAtPath:app.sourcePath toPath:dest error:&cpErr]) {
-        if (error) *error = cpErr;
-        return nil;
-    }
-    [self _patchOuterPlist:dest profile:profile];
-    [self _renameHelpers:dest profile:profile];
-    [self _signInsideOut:dest];
-    [self _clearQuarantine:dest];
-    return dest;
+    return app.sourcePath;
 }
 
 - (BOOL)launch:(Profile *)profile error:(NSError **)error {
-    if (![profile isDesktopInstalled]) {
-        if (![self setup:profile force:NO error:error]) return NO;
+    AppDescriptor *app = [profile app];
+    if (![[NSFileManager defaultManager] fileExistsAtPath:app.sourcePath]) {
+        if (error) *error = [NSError errorWithDomain:@"ClaudeProfiles" code:10 userInfo:@{
+            NSLocalizedDescriptionKey: [NSString stringWithFormat:
+                @"%@ not found at %@", app.displayName, app.sourcePath]}];
+        return NO;
     }
-    [self _clearQuarantine:[profile appBundlePath]];
-    // Pass --user-data-dir so each profile uses an isolated Electron userData path.
+    // Ensure data dir + clear any stale legacy copy.
+    [self setup:profile force:NO error:nil];
+    // Launch the GENUINE app with this profile's isolated --user-data-dir.
     NSString *udd = [NSString stringWithFormat:@"--user-data-dir=%@", [profile userDataDir]];
     [Shell spawn:@"/usr/bin/open"
-            args:@[@"-n", [profile appBundlePath], @"--args", udd]];
+            args:@[@"-n", app.sourcePath, @"--args", udd]];
     return YES;
 }
 
 - (void)syncAllInstalledForApp:(AppDescriptor *)app {
-    ProfileStore *store = [ProfileStore new];
-    for (Profile *p in store.profiles) {
-        if ([p.appID isEqualToString:app.appID] && [p isDesktopInstalled]) {
-            [self setup:p force:YES error:nil];
-        }
-    }
+    // Nothing to sync in the genuine-app model — profiles always launch the current
+    // /Applications/<App>.app, so there are no stale copies to refresh.
     NSString *v = [app sourceVersion];
     if (v) [self writeSyncedVersion:v forApp:app];
 }
@@ -143,9 +132,9 @@ static NSString *ShQuote(NSString *s) {
 }
 
 - (nullable NSArray<NSString *> *)updateAvailableForApp:(AppDescriptor *)app {
-    NSString *installed = [app sourceVersion];
-    NSString *synced = [self syncedVersionForApp:app];
-    if (installed && synced && ![installed isEqualToString:synced]) return @[synced, installed];
+    // Genuine-app model: profiles always launch the current /Applications/<App>.app,
+    // so a Claude update never leaves a profile stale — nothing to flag.
+    (void)app;
     return nil;
 }
 

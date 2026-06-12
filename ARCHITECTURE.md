@@ -47,34 +47,43 @@ No package manager, no external libraries. Just clang and the macOS SDK.
 
 ### Claude Desktop (`DesktopManager`)
 
-Goal: each profile is a completely separate account with no shared session state.
+Goal: each profile is a completely separate account with no shared session state —
+**and** Cowork keeps working.
 
-1. **Copy** `/Applications/Claude.app` → `~/Applications/Claude-<slug>.app`
-   (`NSFileManager copyItemAtPath:`, which preserves the nested symlinks in
-   Electron's frameworks).
-2. **Patch the outer `Info.plist`:**
-   - `CFBundleIdentifier` → `com.anthropic.claude.profile.<slug>` (Keychain isolation)
-   - `CFBundleName` → `Claude-<slug>` (Electron derives helper paths from this)
-   - `CFBundleDisplayName` → `Claude (<Display>)` (what the Dock shows)
-3. **Rename the Electron helpers.** Electron builds the helper path as
-   `Frameworks/<CFBundleName> Helper.app`. After step 2 that points at a
-   non-existent `Claude-<slug> Helper.app`, so each helper bundle —
-   `Claude Helper.app`, `Claude Helper (GPU)/(Plugin)/(Renderer).app` — is renamed
-   (directory **and** inner binary **and** its `Info.plist`'s `CFBundleExecutable`/
-   `CFBundleName`/`CFBundleIdentifier`). Without this, launch fails with
-   *"Unable to find helper app"*.
-4. **Ad-hoc re-sign inside-out.** All nested `.app`/`.framework` bundles are signed
-   deepest-first, then the outer app. `codesign --deep` alone does **not** descend
-   into nested `.app` bundles inside `Frameworks/`, so a flat `--deep` leaves the
-   helpers unsigned and the app refuses to launch on macOS 13+.
-5. **Clear quarantine** (`find … -print0 | xargs -0 xattr -c`) to avoid the
-   Gatekeeper block and App Translocation.
-6. **Launch** with `open -n <app> --args --user-data-dir=~/Library/Application Support/Claude-<slug>`.
-   Claude hardcodes its userData path otherwise; this flag is what gives each
-   profile its own cookies / localStorage / session.
+The mechanism is deliberately minimal: launch the **genuine, unmodified**
+`/Applications/Claude.app` with a per-profile `--user-data-dir`:
 
-Steps 3 and 6 are independent and both required: step 3 lets the app *launch*;
-step 6 makes the launched app a *separate account*.
+```
+open -n /Applications/Claude.app --args --user-data-dir=~/Library/Application Support/Claude-<slug>
+```
+
+- `open -n` starts a **separate instance** (Claude's single-instance lock is keyed by
+  the userData dir, so distinct data dirs coexist — verified with main + 2 profiles).
+- The separate data dir holds the session (cookies/localStorage), so each profile is a
+  **separate login**. Verified: pointing at a fresh empty data dir opens a *logged-out*
+  window, proving the session lives in the data dir, not the shared Keychain.
+- The app keeps Anthropic's genuine **notarized, hardened-runtime** signature
+  (`Team ID Q6L2SF6YDW`), so **Cowork's code-signature check passes**.
+
+`setup()` therefore does almost nothing — it just ensures the data dir exists and
+removes any bundle left over from the old approach. There is no copy, no plist patch,
+no helper rename, no re-sign, no quarantine handling, and **no post-update sync**
+(profiles always launch the current app).
+
+> **History — why not copy the app?** v1 copied `Claude.app` per profile, patched
+> `CFBundleIdentifier`/`CFBundleName`, renamed the nested Electron helpers, and ad-hoc
+> re-signed inside-out. That achieved isolation, but **Cowork refused to run** in the
+> re-signed bundle: Cowork runs a sandboxed Linux VM and verifies Claude's genuine
+> signature first, so the ad-hoc signature (no Team ID, no notarization, no hardened
+> runtime) was rejected with *"installation appears corrupted — reinstall to use
+> Cowork."* Re-signing is unavoidable once you modify the bundle, so the copy approach
+> and Cowork are fundamentally incompatible. The genuine-app + data-dir model avoids
+> the modification entirely.
+
+**Trade-offs:** all profiles share one bundle id, so they appear identically as
+"Claude" in the Dock/⌘-Tab (no per-profile icon), and a profile is reopened via the
+Claude Profiles app rather than a standalone Desktop icon. Keychain is shared, but
+since the session lives in the data dir this doesn't leak logins.
 
 ### Claude Code (`CodeManager`)
 

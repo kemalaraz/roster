@@ -54,22 +54,29 @@ The app opens a simple window listing your profiles.
 
 ## How it works
 
-**Claude Desktop isolation.** Each profile gets a copy of `/Applications/Claude.app`
-at `~/Applications/Claude-<name>.app`, with three changes that make it a genuinely
-separate app:
+**Claude Desktop isolation.** Each profile launches the **genuine, unmodified**
+`/Applications/Claude.app` with its own `--user-data-dir`:
 
-1. **`CFBundleIdentifier`** → `com.anthropic.claude.profile.<name>` — macOS scopes
-   Keychain entries by bundle id, so credentials never leak between profiles.
-2. **`CFBundleName`** → `Claude-<name>`, and every nested Electron helper
-   (`Claude Helper.app`, `Claude Helper (GPU).app`, …) is renamed to match —
-   Electron derives helper paths from `CFBundleName`, so this is required for the
-   app to launch at all.
-3. **`--user-data-dir`** is passed at launch, pointing at
-   `~/Library/Application Support/Claude-<name>` — this gives each profile its own
-   cookies, localStorage, and session, which is what actually separates the accounts.
+```
+open -n /Applications/Claude.app --args --user-data-dir=~/Library/Application Support/Claude-<name>
+```
 
-The bundle is then ad-hoc re-signed **inside-out** (nested helpers first, outer app
-last — `--deep` alone doesn't descend into nested `.app` bundles) and de-quarantined.
+The separate data dir gives each profile its own cookies, localStorage, and session —
+that's what separates the accounts (verified: a fresh data dir starts logged out, so
+the session lives in the data dir, not the shared Keychain). Because the app itself is
+never copied or modified, it keeps Anthropic's genuine notarized signature.
+
+> **Why not copy the app?** An earlier version copied `Claude.app` per profile and
+> patched/re-signed it. That works for plain isolation, but **Cowork refuses to run**
+> in a re-signed bundle — it verifies Claude's genuine code signature, and re-signing
+> (required to change the bundle id / rename Electron helpers) replaces it with an
+> ad-hoc signature. Launching the genuine app with a per-profile data dir keeps Cowork
+> working, survives Claude updates with no re-sync, and avoids the macOS
+> "Launchd job spawn failed" errors that re-signing caused.
+
+**Trade-off:** since every profile is the same genuine bundle, they all appear as
+"Claude" in the Dock/⌘-Tab (no per-profile icon), and you reopen a profile via the
+Claude Profiles app rather than a standalone Desktop icon.
 
 **Claude Code isolation.** Claude Code honours `CLAUDE_CONFIG_DIR`. Each profile
 gets `~/.claude-profiles/<name>/claude-code/`, so sessions, settings, and history
@@ -108,9 +115,8 @@ Running it with no arguments opens the GUI.
 
 ## After a Claude Desktop update
 
-Profile bundles don't auto-update. Click **Sync** in the app (or run `--sync`, or
-enable **Auto-sync on login**). Login sessions live in
-`~/Library/Application Support/Claude-<name>` and are preserved across syncs.
+Nothing to do — profiles launch the current `/Applications/Claude.app` directly, so a
+Claude update applies to every profile automatically. (No copied bundles to re-sync.)
 
 ---
 
@@ -119,18 +125,16 @@ enable **Auto-sync on login**). Login sessions live in
 ```
 ~/.claude-profiles/
 ├── profiles.json              ← profile registry
-├── app-versions.json          ← last-synced version per app
 └── work/
     └── claude-code/           ← CLAUDE_CONFIG_DIR for the work profile
 
-~/Applications/
-├── Claude-work.app            ← isolated Desktop app (work)
-└── Claude-personal.app        ← isolated Desktop app (personal)
-
 ~/Library/Application Support/
-├── Claude-work/               ← Desktop session + data (work)
-└── Claude-personal/           ← Desktop session + data (personal)
+├── Claude-work/               ← Desktop session + data + Cowork VM (work)
+└── Claude-personal/           ← Desktop session + data + Cowork VM (personal)
 ```
+
+The genuine `/Applications/Claude.app` is shared by all profiles; only the per-profile
+data dir differs.
 
 ---
 
