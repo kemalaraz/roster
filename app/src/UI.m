@@ -7,13 +7,13 @@
 static NSColor *CPColor(int r, int g, int b) {
     return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
 }
-static NSColor *CPAccent(void)    { return CPColor(124,  92, 230); } // #7C5CE6 primary violet
-static NSColor *CPAccentDeep(void){ return CPColor( 92,  64, 184); } // #5C40B8 pressed/deep
-static NSColor *CPBg(void)        { return CPColor(222, 213, 244); } // deeper lavender (matches backdrop top)
-static NSColor *CPSurface(void)   { return CPColor(252, 251, 254); } // #FCFBFE card surface
-static NSColor *CPBorder(void)    { return CPColor(228, 224, 240); } // #E4E0F0 lavender hairline
-static NSColor *CPInk(void)       { return CPColor( 32,  28,  48); } // #201C30 deep indigo text
-static NSColor *CPInkSoft(void)   { return CPColor(110, 104, 128); } // #6E6880 secondary text
+static NSColor *CPAccent(void)    { return CPColor( 15, 164, 127); } // #0FA47F teal green
+static NSColor *CPAccentDeep(void){ return CPColor( 11, 125,  96); } // #0B7D60 pressed/deep
+static NSColor *CPBg(void)        { return CPColor(212, 238, 230); } // soft teal wash (matches backdrop top)
+static NSColor *CPSurface(void)   { return CPColor(251, 254, 253); } // #FBFEFD card surface
+static NSColor *CPBorder(void)    { return CPColor(210, 232, 224); } // #D2E8E0 teal hairline
+static NSColor *CPInk(void)       { return CPColor( 28,  46,  41); } // #1C2E29 deep teal-charcoal text
+static NSColor *CPInkSoft(void)   { return CPColor(104, 124, 118); } // #687C76 secondary text
 
 // A filled accent "primary" button, fully custom-drawn. Drawing the fill and label
 // ourselves (instead of bezelColor + a manual white attributedTitle) means the color
@@ -54,7 +54,7 @@ static NSColor *CPInkSoft(void)   { return CPColor(110, 104, 128); } // #6E6880 
     return NSMakeSize(ceil(s.width) + 26, 28);
 }
 - (void)drawRect:(NSRect)dirtyRect {
-    NSColor *fill = self.isHighlighted ? CPColor(235, 231, 247) : CPSurface();
+    NSColor *fill = self.isHighlighted ? CPColor(224, 242, 236) : CPSurface();
     NSRect b = NSInsetRect(self.bounds, 0.5, 0.5);
     NSBezierPath *p = [NSBezierPath bezierPathWithRoundedRect:b xRadius:6 yRadius:6];
     [fill setFill]; [p fill];
@@ -91,11 +91,11 @@ static NSButton *CPSecondaryButton(NSString *title, id target, SEL action) {
 @interface CPBackgroundView : NSView @end
 @implementation CPBackgroundView
 - (void)drawRect:(NSRect)dirtyRect {
-    // Deeper lavender, closer to the app's violet accent (#7C5CE6).
-    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(222, 213, 244)
-                                                  endingColor:CPColor(236, 231, 249)];
+    // Soft teal-green wash, in the family of the app's teal accent (#0FA47F).
+    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(212, 238, 230)
+                                                  endingColor:CPColor(234, 246, 242)];
     [g drawInRect:self.bounds angle:-90];
-    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.20];
+    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.18];
     NSGradient *rg = [[NSGradient alloc] initWithStartingColor:glow
                                                    endingColor:[CPAccent() colorWithAlphaComponent:0]];
     NSPoint ctr = NSMakePoint(NSWidth(self.bounds) * 0.82, NSHeight(self.bounds) * 0.90);
