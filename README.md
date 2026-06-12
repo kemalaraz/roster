@@ -169,4 +169,9 @@ Install Claude Code: `npm install -g @anthropic-ai/claude-code`.
 
 ## License
 
-MIT
+**Proprietary — All Rights Reserved.** Copyright © 2026 Kemal Araz.
+
+This software may not be used, run, copied, modified, or distributed without the
+author's prior written permission. Viewing or forking the source on GitHub does
+**not** grant any right to use it. See [LICENSE](LICENSE). To request permission,
+contact kemalaraz91@gmail.com.

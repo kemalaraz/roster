@@ -11,8 +11,9 @@
 #import <math.h>
 
 static const CGFloat S = 1024.0;     // canvas
-static const CGFloat HALF = 404.0;   // squircle half-size → 808px content (108px gutter),
-                                     // matching macOS system icons' footprint.
+static const CGFloat HALF = 411.0;   // squircle half-size → 822px content (101px gutter),
+                                     // the exact macOS system-icon footprint (verified
+                                     // against Notes/Maps/App Store/Reminders/Calculator).
 static const CGFloat NEXP = 5.0;     // superellipse exponent (Apple-like squircle)
 
 static CGColorRef rgb(CGFloat r, CGFloat g, CGFloat b, CGFloat a) {
