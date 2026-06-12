@@ -86,11 +86,45 @@ static NSString *ShQuote(NSString *s) {
     }
     // Ensure data dir + clear any stale legacy copy.
     [self setup:profile force:NO error:nil];
+
+    // If this profile is already running, don't spawn a duplicate — bring the
+    // existing instance forward instead. (open -n always starts a new instance.)
+    NSString *existingPID = [self _mainPIDForProfile:profile];
+    if (existingPID) {
+        [self _focusPID:existingPID];
+        return YES;
+    }
+
     // Launch the GENUINE app with this profile's isolated --user-data-dir.
     NSString *udd = [NSString stringWithFormat:@"--user-data-dir=%@", [profile userDataDir]];
     [Shell spawn:@"/usr/bin/open"
             args:@[@"-n", app.sourcePath, @"--args", udd]];
     return YES;
+}
+
+// Returns the PID of the profile's main process (the Contents/MacOS/<App> process
+// carrying this profile's --user-data-dir), or nil if it isn't running. Helper
+// subprocesses share the same --user-data-dir, so we match the main binary path
+// specifically to avoid returning a helper PID.
+- (nullable NSString *)_mainPIDForProfile:(Profile *)profile {
+    NSString *mainExe = [profile.app.sourcePath stringByAppendingPathComponent:@"Contents/MacOS"];
+    NSString *pattern = [NSString stringWithFormat:@"%@/.* --user-data-dir=%@",
+                         mainExe, [profile userDataDir]];
+    int status = 0;
+    NSString *out = [Shell capture:@"/usr/bin/pgrep" args:@[@"-f", pattern] status:&status];
+    if (status != 0 || out.length == 0) return nil;
+    return [[out componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+            firstObject];
+}
+
+// Best-effort: raise the windows of the given process to the front. Bundle-level
+// activation can't target one instance among several sharing a bundle id, so we
+// raise the specific process via its PID.
+- (void)_focusPID:(NSString *)pid {
+    NSString *script = [NSString stringWithFormat:
+        @"tell application \"System Events\" to set frontmost of "
+        @"(first process whose unix id is %@) to true", pid];
+    [Shell run:@"/usr/bin/osascript" args:@[@"-e", script]];
 }
 
 - (void)syncAllInstalledForApp:(AppDescriptor *)app {
@@ -101,9 +135,9 @@ static NSString *ShQuote(NSString *s) {
 }
 
 - (BOOL)isRunning:(Profile *)profile {
-    int status = 0;
-    [Shell capture:@"/usr/bin/pgrep" args:@[@"-f", [profile bundleID]] status:&status];
-    return status == 0;
+    // Genuine-app model: every profile runs the same bundle id, so detect by the
+    // profile's unique --user-data-dir on the command line.
+    return [self _mainPIDForProfile:profile] != nil;
 }
 
 // ── Version tracking ─────────────────────────────────────────────────────────

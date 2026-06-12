@@ -3,6 +3,28 @@
 #import "Models.h"
 #import "Managers.h"
 
+// ── Claude palette ───────────────────────────────────────────────────────────
+static NSColor *CPColor(int r, int g, int b) {
+    return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
+}
+static NSColor *CPCoral(void)    { return CPColor(217, 119, 87); }   // #D97757 Claude coral
+static NSColor *CPCream(void)    { return CPColor(244, 240, 233); }  // warm window bg
+static NSColor *CPSurface(void)  { return CPColor(252, 251, 248); }  // card surface
+static NSColor *CPBorder(void)   { return CPColor(228, 220, 208); }  // warm hairline
+static NSColor *CPInk(void)      { return CPColor(41, 39, 35); }     // warm charcoal text
+static NSColor *CPInkSoft(void)  { return CPColor(120, 114, 104); }  // secondary text
+
+// A filled coral "primary" button.
+static NSButton *CPPrimaryButton(NSString *title, id target, SEL action) {
+    NSButton *b = [NSButton buttonWithTitle:title target:target action:action];
+    b.bezelStyle = NSBezelStyleRounded;
+    b.bezelColor = CPCoral();
+    b.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:@{
+        NSForegroundColorAttributeName: [NSColor whiteColor],
+        NSFontAttributeName: [NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]}];
+    return b;
+}
+
 // ── A top-down (flipped) container so cards stack from the top of the scroll view.
 @interface FlippedView : NSView @end
 @implementation FlippedView - (BOOL)isFlipped { return YES; } @end
@@ -155,6 +177,8 @@ static NSTextField *Label(NSString *s) {
         backing:NSBackingStoreBuffered defer:NO];
     w.title = @"Claude Profiles";
     w.minSize = NSMakeSize(480, 420);
+    w.backgroundColor = CPCream();
+    w.titlebarAppearsTransparent = YES;   // let the cream extend into the title bar
     [w center];
     self.window = w;
     NSView *root = w.contentView;
@@ -162,9 +186,8 @@ static NSTextField *Label(NSString *s) {
     // Header
     NSTextField *h = [NSTextField labelWithString:@"Claude Profiles"];
     h.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
-    NSButton *newBtn = [NSButton buttonWithTitle:@"  + New Profile  "
-                                          target:self action:@selector(newProfile:)];
-    newBtn.bezelStyle = NSBezelStyleRounded;
+    h.textColor = CPInk();
+    NSButton *newBtn = CPPrimaryButton(@"  + New Profile  ", self, @selector(newProfile:));
     newBtn.keyEquivalent = @"n"; newBtn.keyEquivalentModifierMask = NSEventModifierFlagCommand;
     NSButton *syncBtn = [NSButton buttonWithTitle:@"Sync" target:self action:@selector(syncNow:)];
     syncBtn.bezelStyle = NSBezelStyleRounded;
@@ -263,10 +286,10 @@ static NSTextField *Label(NSString *s) {
 - (NSView *)buildCard:(Profile *)p index:(NSInteger)i {
     NSView *card = [NSView new];
     card.wantsLayer = YES;
-    card.layer.cornerRadius = 10;
-    card.layer.backgroundColor = [NSColor controlBackgroundColor].CGColor;
+    card.layer.cornerRadius = 12;
+    card.layer.backgroundColor = CPSurface().CGColor;
     card.layer.borderWidth = 1;
-    card.layer.borderColor = [NSColor separatorColor].CGColor;
+    card.layer.borderColor = CPBorder().CGColor;
     card.translatesAutoresizingMaskIntoConstraints = NO;
 
     NSTextField *emoji = [NSTextField labelWithString:p.emoji ?: @"👤"];
@@ -274,6 +297,7 @@ static NSTextField *Label(NSString *s) {
 
     NSTextField *name = [NSTextField labelWithString:p.displayName];
     name.font = [NSFont systemFontOfSize:15 weight:NSFontWeightSemibold];
+    name.textColor = CPInk();
 
     BOOL desk = [p isDesktopInstalled], code = [p isCodeInitialized];
     NSString *sub = [NSString stringWithFormat:@"%@  ·  Desktop %@  ·  Code %@",
@@ -282,15 +306,15 @@ static NSTextField *Label(NSString *s) {
         code ? @"ready" : @"—"];
     NSTextField *subtitle = [NSTextField labelWithString:sub];
     subtitle.font = [NSFont systemFontOfSize:11];
-    subtitle.textColor = [NSColor secondaryLabelColor];
+    subtitle.textColor = CPInkSoft();
 
     NSStackView *text = [NSStackView stackViewWithViews:@[name, subtitle]];
     text.orientation = NSUserInterfaceLayoutOrientationVertical;
     text.alignment = NSLayoutAttributeLeading;
     text.spacing = 3;
 
-    NSButton *launch = [NSButton buttonWithTitle:@"Launch Desktop" target:self action:@selector(launchDesktop:)];
-    launch.bezelStyle = NSBezelStyleRounded; launch.tag = i;
+    NSButton *launch = CPPrimaryButton(@"Launch Desktop", self, @selector(launchDesktop:));
+    launch.tag = i;
     NSButton *open = [NSButton buttonWithTitle:@"Open Code" target:self action:@selector(openCode:)];
     open.bezelStyle = NSBezelStyleRounded; open.tag = i;
     NSButton *more = [NSButton buttonWithTitle:@"⋯" target:self action:@selector(showRowMenu:)];
@@ -341,12 +365,15 @@ static NSTextField *Label(NSString *s) {
 // Run a potentially-slow block off the main thread; disable `button` meanwhile.
 - (void)runBusy:(NSButton *)button title:(NSString *)busyTitle
           block:(NSError *(^)(void))block done:(void (^)(NSError *))done {
-    NSString *orig = button.title;
-    button.enabled = NO; button.title = busyTitle;
+    // Preserve the button's attributed styling (coral primary buttons use white text).
+    NSAttributedString *orig = button.attributedTitle;
+    NSDictionary *attrs = orig.length ? [orig attributesAtIndex:0 effectiveRange:NULL] : @{};
+    button.attributedTitle = [[NSAttributedString alloc] initWithString:busyTitle attributes:attrs];
+    button.enabled = NO;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *err = block();
         dispatch_async(dispatch_get_main_queue(), ^{
-            button.enabled = YES; button.title = orig;
+            button.enabled = YES; button.attributedTitle = orig;
             if (done) done(err);
         });
     });
