@@ -11,13 +11,18 @@ just download and double-click.
 
 ---
 
-## Install
+> **Requirement:** [Claude Desktop](https://claude.ai/download) must be installed at
+> `/Applications/Claude.app` — the tool launches the genuine app per profile.
 
-### Option A — download the app
+### Option A — download the prebuilt app
 
-1. Download `Claude Profiles.app` (from Releases, or build it — see below).
-2. Drag it to `/Applications`.
-3. First launch: right-click → **Open** (macOS asks once, because the app is ad-hoc signed).
+1. Go to the **[latest release](https://github.com/kemalaraz/claude-profiles/releases/latest)**
+   and download `Claude-Profiles.app.zip`.
+2. Unzip it and drag **Claude Profiles.app** to `/Applications`.
+3. First launch: double-click it, then approve it once in
+   **System Settings → Privacy & Security → "Open Anyway"** (the app is ad-hoc
+   signed, not notarized, so macOS asks the first time — see
+   [First launch](#first-launch--gatekeeper) below).
 
 ### Option B — build from source
 
@@ -31,7 +36,17 @@ make install-app
 ```
 
 `make install-app` compiles the app with `clang`, installs it to `/Applications`,
-clears the Gatekeeper quarantine flag, and launches it.
+clears the Gatekeeper quarantine flag, and launches it. (Built locally, so no
+Gatekeeper prompt.)
+
+### First launch — Gatekeeper
+
+A **downloaded** copy is tagged by the browser, so the first launch is blocked with
+"unverified developer." Approve it once: **System Settings → Privacy & Security**,
+scroll to the "Claude Profiles was blocked" notice, click **Open Anyway**, then
+launch again. (On macOS 14 and earlier you can instead right-click the app → **Open**.)
+This is only because the app isn't notarized with a paid Apple Developer ID; building
+from source (Option B) avoids it entirely.
 
 ---
 

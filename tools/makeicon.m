@@ -1,54 +1,78 @@
 // makeicon.m — render the app icon at 1024×1024 (native, no Python).
-// Design: a violet→indigo squircle (gradient) with a fanned stack of three
-// "profile" cards and an app-agnostic avatar glyph on the front card — a profile
-// manager for any AI app, not tied to one brand. Writes a PNG to argv[1].
+// Design: a violet→indigo Apple-style squircle (superellipse) with a soft drop
+// shadow, a fanned stack of three "profile" cards, and a clean app-agnostic avatar
+// on the front card. Sized to match macOS system icons. Writes a PNG to argv[1].
 //
 //   clang -fobjc-arc -framework CoreGraphics -framework ImageIO \
 //         -framework CoreFoundation -framework CoreServices -o makeicon makeicon.m
 #import <CoreGraphics/CoreGraphics.h>
 #import <ImageIO/ImageIO.h>
 #import <CoreServices/CoreServices.h>
+#import <math.h>
 
-static const CGFloat S = 1024.0;           // canvas
-static const CGFloat PAD = 100.0;          // gutter → 824×824 content
-static const CGFloat R_SQUIRCLE = 185.0;   // macOS squircle corner radius
+static const CGFloat S = 1024.0;     // canvas
+static const CGFloat HALF = 404.0;   // squircle half-size → 808px content (108px gutter),
+                                     // matching macOS system icons' footprint.
+static const CGFloat NEXP = 5.0;     // superellipse exponent (Apple-like squircle)
 
 static CGColorRef rgb(CGFloat r, CGFloat g, CGFloat b, CGFloat a) {
     CGFloat c[4] = {r, g, b, a};
     static CGColorSpaceRef cs; if (!cs) cs = CGColorSpaceCreateDeviceRGB();
     return CGColorCreate(cs, c);
 }
+static CGFloat sgn(CGFloat x) { return (x > 0) - (x < 0); }
 
-// Rounded-rect path.
+// Apple-style squircle (superellipse): |x/a|^n + |y/a|^n = 1.
+static CGPathRef squirclePath(CGFloat cx, CGFloat cy, CGFloat a) {
+    CGMutablePathRef p = CGPathCreateMutable();
+    const int STEPS = 240;
+    for (int i = 0; i <= STEPS; i++) {
+        double t = 2.0 * M_PI * i / STEPS;
+        double ct = cos(t), st = sin(t);
+        double x = cx + a * sgn(ct) * pow(fabs(ct), 2.0 / NEXP);
+        double y = cy + a * sgn(st) * pow(fabs(st), 2.0 / NEXP);
+        if (i == 0) CGPathMoveToPoint(p, NULL, x, y);
+        else        CGPathAddLineToPoint(p, NULL, x, y);
+    }
+    CGPathCloseSubpath(p);
+    return p;
+}
+
 static CGPathRef roundedRect(CGRect r, CGFloat rad) {
     return CGPathCreateWithRoundedRect(r, rad, rad, NULL);
 }
 
-// An app-agnostic avatar glyph (head + shoulders) centered on the front card.
-static void addAvatar(CGContextRef c, CGFloat cx, CGFloat cy, CGColorRef col) {
+// A clean person silhouette: a head circle above a smooth semi-elliptical shoulder
+// dome, with a small gap so they read as one tidy glyph (no notch).
+static void addAvatar(CGContextRef c, CGFloat cx, CGColorRef col) {
     CGContextSetFillColorWithColor(c, col);
-    // Shoulders — top half of a disc, the curve facing up toward the head.
-    CGMutablePathRef sh = CGPathCreateMutable();
-    CGPathAddArc(sh, NULL, cx, cy - 70, 140, 0, M_PI, false);
-    CGPathCloseSubpath(sh);
-    CGContextAddPath(c, sh);
+    // Head.
+    CGFloat headR = 60, headCY = 576;
+    CGContextAddEllipseInRect(c, CGRectMake(cx - headR, headCY - headR, 2*headR, 2*headR));
     CGContextFillPath(c);
-    CGPathRelease(sh);
-    // Head — circle above, overlapping the shoulders into one silhouette.
-    CGFloat hR = 62;
-    CGContextAddEllipseInRect(c, CGRectMake(cx - hR, (cy + 51) - hR, 2*hR, 2*hR));
+    // Shoulder dome — top half of a wide ellipse, drawn via a y-scaled semicircle.
+    CGFloat baseY = 432, sw = 134, domeH = 78;   // dome top ≈ 510, gap to head ≈ 6
+    CGContextSaveGState(c);
+    CGContextTranslateCTM(c, cx, baseY);
+    CGContextScaleCTM(c, 1.0, domeH / sw);
+    CGMutablePathRef dome = CGPathCreateMutable();
+    CGPathMoveToPoint(dome, NULL, sw, 0);
+    CGPathAddArc(dome, NULL, 0, 0, sw, 0, M_PI, false);  // arc over the top
+    CGPathCloseSubpath(dome);
+    CGContextAddPath(c, dome);
     CGContextFillPath(c);
+    CGPathRelease(dome);
+    CGContextRestoreGState(c);
 }
 
-// Draw one cream card centered at (cx,cy), rotated `deg`, with a soft shadow.
 static void drawCard(CGContextRef c, CGFloat cx, CGFloat cy, CGFloat deg,
                      CGFloat w, CGFloat h, CGFloat alpha) {
     CGContextSaveGState(c);
     CGContextTranslateCTM(c, cx, cy);
     CGContextRotateCTM(c, deg * M_PI / 180.0);
-    CGContextSetShadowWithColor(c, CGSizeMake(0, -10), 26, rgb(0.10, 0.05, 0.22, 0.35));
-    CGPathRef card = roundedRect(CGRectMake(-w/2, -h/2, w, h), 58);
-    CGContextSetFillColorWithColor(c, rgb(0.980, 0.975, 1.000, alpha));  // cool white (bg bleeds → lavender)
+    CGContextSetShadowWithColor(c, CGSizeMake(0, -9), 24, rgb(0.10, 0.05, 0.22, 0.32));
+    CGPathRef card = roundedRect(CGRectMake(-w/2, -h/2, w, h), 54);
+    CGContextSetFillColorWithColor(c, rgb(0.980, 0.975, 1.000, alpha));
     CGContextAddPath(c, card);
     CGContextFillPath(c);
     CGPathRelease(card);
@@ -61,9 +85,18 @@ int main(int argc, const char *argv[]) {
     CGContextRef c = CGBitmapContextCreate(NULL, (size_t)S, (size_t)S, 8, 0, cs,
                         kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
 
-    // ── Squircle background with a vertical coral gradient ──────────────────
-    CGRect sq = CGRectMake(PAD, PAD, S - 2*PAD, S - 2*PAD);
-    CGPathRef squircle = roundedRect(sq, R_SQUIRCLE);
+    CGFloat cx = S/2, cy = S/2;
+    CGPathRef squircle = squirclePath(cx, cy, HALF);
+
+    // ── Soft contact shadow under the squircle (like system icons) ──────────
+    CGContextSaveGState(c);
+    CGContextSetShadowWithColor(c, CGSizeMake(0, -14), 30, rgb(0.06, 0.03, 0.18, 0.30));
+    CGContextAddPath(c, squircle);
+    CGContextSetFillColorWithColor(c, rgb(0.4, 0.3, 0.7, 1));   // placeholder fill → casts shadow
+    CGContextFillPath(c);
+    CGContextRestoreGState(c);
+
+    // ── Squircle fill: violet→indigo vertical gradient ──────────────────────
     CGContextSaveGState(c);
     CGContextAddPath(c, squircle);
     CGContextClip(c);
@@ -73,22 +106,22 @@ int main(int argc, const char *argv[]) {
     CFArrayRef arr = CFArrayCreate(NULL, (const void **)gcols, 2, &kCFTypeArrayCallBacks);
     CGGradientRef grad = CGGradientCreateWithColors(cs, arr, locs);
     CGContextDrawLinearGradient(c, grad, CGPointMake(0, S), CGPointMake(0, 0), 0);
-    // Soft highlight glow near the top.
-    CGColorRef hcols[2] = { rgb(1, 1, 1, 0.16), rgb(1, 1, 1, 0) };
+    // Soft top highlight.
+    CGColorRef hcols[2] = { rgb(1, 1, 1, 0.15), rgb(1, 1, 1, 0) };
     CFArrayRef harr = CFArrayCreate(NULL, (const void **)hcols, 2, &kCFTypeArrayCallBacks);
     CGGradientRef hg = CGGradientCreateWithColors(cs, harr, locs);
-    CGContextDrawRadialGradient(c, hg, CGPointMake(S/2, S*0.74), 0,
-                                CGPointMake(S/2, S*0.74), S*0.46, 0);
+    CGContextDrawRadialGradient(c, hg, CGPointMake(cx, S*0.72), 0,
+                                CGPointMake(cx, S*0.72), S*0.44, 0);
     CGContextRestoreGState(c);
 
     // ── Fanned stack of three profile cards ─────────────────────────────────
-    CGFloat cw = 300, ch = 384;
-    drawCard(c, 512 - 118, 506,  12, cw, ch, 0.62);   // back-left
-    drawCard(c, 512 + 118, 506, -12, cw, ch, 0.80);   // back-right
-    drawCard(c, 512,       524,   0, cw, ch, 1.00);   // front
+    CGFloat cw = 286, ch = 364;
+    drawCard(c, cx - 112, 506,  12, cw, ch, 0.62);   // back-left
+    drawCard(c, cx + 112, 506, -12, cw, ch, 0.80);   // back-right
+    drawCard(c, cx,       524,   0, cw, ch, 1.00);   // front
 
-    // ── Violet avatar glyph on the front card ────────────────────────────────
-    addAvatar(c, 512, 520, rgb(0.486, 0.361, 0.902, 1));   // #7C5CE6 accent violet
+    // ── Avatar on the front card ────────────────────────────────────────────
+    addAvatar(c, cx, rgb(0.486, 0.361, 0.902, 1));   // #7C5CE6 accent violet
 
     // ── Encode PNG ──────────────────────────────────────────────────────────
     CGImageRef img = CGBitmapContextCreateImage(c);

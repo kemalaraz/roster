@@ -9,7 +9,7 @@ static NSColor *CPColor(int r, int g, int b) {
 }
 static NSColor *CPAccent(void)    { return CPColor(124,  92, 230); } // #7C5CE6 primary violet
 static NSColor *CPAccentDeep(void){ return CPColor( 92,  64, 184); } // #5C40B8 pressed/deep
-static NSColor *CPBg(void)        { return CPColor(245, 244, 250); } // #F5F4FA lavender window bg
+static NSColor *CPBg(void)        { return CPColor(222, 213, 244); } // deeper lavender (matches backdrop top)
 static NSColor *CPSurface(void)   { return CPColor(252, 251, 254); } // #FCFBFE card surface
 static NSColor *CPBorder(void)    { return CPColor(228, 224, 240); } // #E4E0F0 lavender hairline
 static NSColor *CPInk(void)       { return CPColor( 32,  28,  48); } // #201C30 deep indigo text
@@ -91,10 +91,11 @@ static NSButton *CPSecondaryButton(NSString *title, id target, SEL action) {
 @interface CPBackgroundView : NSView @end
 @implementation CPBackgroundView
 - (void)drawRect:(NSRect)dirtyRect {
-    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(237, 233, 248)
-                                                  endingColor:CPColor(248, 247, 252)];
+    // Deeper lavender, closer to the app's violet accent (#7C5CE6).
+    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(222, 213, 244)
+                                                  endingColor:CPColor(236, 231, 249)];
     [g drawInRect:self.bounds angle:-90];
-    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.12];
+    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.20];
     NSGradient *rg = [[NSGradient alloc] initWithStartingColor:glow
                                                    endingColor:[CPAccent() colorWithAlphaComponent:0]];
     NSPoint ctr = NSMakePoint(NSWidth(self.bounds) * 0.82, NSHeight(self.bounds) * 0.90);
@@ -296,6 +297,11 @@ static NSTextField *Label(NSString *s) {
     scroll.drawsBackground = NO;
     scroll.documentView = doc;
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
+    // Standard macOS overlay scroller: a thin pill that appears on scroll and fades
+    // out, rather than a permanent legacy track.
+    scroll.scrollerStyle = NSScrollerStyleOverlay;
+    scroll.autohidesScrollers = YES;
+    scroll.verticalScrollElasticity = NSScrollElasticityAllowed;
 
     [NSLayoutConstraint activateConstraints:@[
         [doc.topAnchor constraintEqualToAnchor:scroll.contentView.topAnchor],
