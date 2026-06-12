@@ -3,27 +3,104 @@
 #import "Models.h"
 #import "Managers.h"
 
-// ── Claude palette ───────────────────────────────────────────────────────────
+// ── Palette (own brand — violet/lavender, app-agnostic) ──────────────────────
 static NSColor *CPColor(int r, int g, int b) {
     return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
 }
-static NSColor *CPCoral(void)    { return CPColor(217, 119, 87); }   // #D97757 Claude coral
-static NSColor *CPCream(void)    { return CPColor(244, 240, 233); }  // warm window bg
-static NSColor *CPSurface(void)  { return CPColor(252, 251, 248); }  // card surface
-static NSColor *CPBorder(void)   { return CPColor(228, 220, 208); }  // warm hairline
-static NSColor *CPInk(void)      { return CPColor(41, 39, 35); }     // warm charcoal text
-static NSColor *CPInkSoft(void)  { return CPColor(120, 114, 104); }  // secondary text
+static NSColor *CPAccent(void)    { return CPColor(124,  92, 230); } // #7C5CE6 primary violet
+static NSColor *CPAccentDeep(void){ return CPColor( 92,  64, 184); } // #5C40B8 pressed/deep
+static NSColor *CPBg(void)        { return CPColor(245, 244, 250); } // #F5F4FA lavender window bg
+static NSColor *CPSurface(void)   { return CPColor(252, 251, 254); } // #FCFBFE card surface
+static NSColor *CPBorder(void)    { return CPColor(228, 224, 240); } // #E4E0F0 lavender hairline
+static NSColor *CPInk(void)       { return CPColor( 32,  28,  48); } // #201C30 deep indigo text
+static NSColor *CPInkSoft(void)   { return CPColor(110, 104, 128); } // #6E6880 secondary text
 
-// A filled coral "primary" button.
-static NSButton *CPPrimaryButton(NSString *title, id target, SEL action) {
-    NSButton *b = [NSButton buttonWithTitle:title target:target action:action];
-    b.bezelStyle = NSBezelStyleRounded;
-    b.bezelColor = CPCoral();
-    b.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:@{
-        NSForegroundColorAttributeName: [NSColor whiteColor],
-        NSFontAttributeName: [NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]}];
+// A filled accent "primary" button, fully custom-drawn. Drawing the fill and label
+// ourselves (instead of bezelColor + a manual white attributedTitle) means the color
+// and letters never vanish on press — the system bezel's highlighted state was
+// blanking them.
+@interface CPButton : NSButton @end
+@implementation CPButton
+- (NSSize)intrinsicContentSize {
+    NSDictionary *a = @{NSFontAttributeName:[NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]};
+    NSSize s = [(self.title ?: @"") sizeWithAttributes:a];
+    return NSMakeSize(ceil(s.width) + 28, 28);   // same height as secondary buttons
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    NSColor *fill = CPAccent();
+    if (!self.isEnabled)         fill = [CPAccent() colorWithAlphaComponent:0.45];
+    else if (self.isHighlighted) fill = CPAccentDeep();
+    NSBezierPath *p = [NSBezierPath bezierPathWithRoundedRect:self.bounds xRadius:6 yRadius:6];
+    [fill setFill];
+    [p fill];
+    NSDictionary *a = @{
+        NSForegroundColorAttributeName: [[NSColor whiteColor] colorWithAlphaComponent:(self.isEnabled ? 1.0 : 0.85)],
+        NSFontAttributeName: [NSFont systemFontOfSize:13 weight:NSFontWeightSemibold]};
+    NSString *t = self.title ?: @"";
+    NSSize ts = [t sizeWithAttributes:a];
+    NSPoint pt = NSMakePoint(round((NSWidth(self.bounds) - ts.width) / 2),
+                             round((NSHeight(self.bounds) - ts.height) / 2));
+    [t drawAtPoint:pt withAttributes:a];
+}
+@end
+
+// A secondary button — same height/shape as the primary, but a light surface with a
+// hairline border and ink label. Keeps the whole action row visually consistent.
+@interface CPSecButton : NSButton @end
+@implementation CPSecButton
+- (NSSize)intrinsicContentSize {
+    NSDictionary *a = @{NSFontAttributeName:[NSFont systemFontOfSize:13 weight:NSFontWeightMedium]};
+    NSSize s = [(self.title ?: @"") sizeWithAttributes:a];
+    return NSMakeSize(ceil(s.width) + 26, 28);
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    NSColor *fill = self.isHighlighted ? CPColor(235, 231, 247) : CPSurface();
+    NSRect b = NSInsetRect(self.bounds, 0.5, 0.5);
+    NSBezierPath *p = [NSBezierPath bezierPathWithRoundedRect:b xRadius:6 yRadius:6];
+    [fill setFill]; [p fill];
+    [CPBorder() setStroke]; p.lineWidth = 1; [p stroke];
+    NSDictionary *a = @{
+        NSForegroundColorAttributeName: (self.isEnabled ? CPInk() : CPInkSoft()),
+        NSFontAttributeName: [NSFont systemFontOfSize:13 weight:NSFontWeightMedium]};
+    NSString *t = self.title ?: @"";
+    NSSize ts = [t sizeWithAttributes:a];
+    [t drawAtPoint:NSMakePoint(round((NSWidth(self.bounds) - ts.width) / 2),
+                               round((NSHeight(self.bounds) - ts.height) / 2)) withAttributes:a];
+}
+@end
+
+static NSButton *_cpMakeButton(Class cls, NSString *title, id target, SEL action) {
+    NSButton *b = [cls new];
+    b.title = title;
+    b.target = target;
+    b.action = action;
+    b.bordered = NO;
+    [b setButtonType:NSButtonTypeMomentaryChange];
+    b.wantsLayer = YES;
     return b;
 }
+static NSButton *CPPrimaryButton(NSString *title, id target, SEL action) {
+    return _cpMakeButton([CPButton class], title, target, action);
+}
+static NSButton *CPSecondaryButton(NSString *title, id target, SEL action) {
+    return _cpMakeButton([CPSecButton class], title, target, action);
+}
+
+// Window backdrop — a subtle vertical lavender gradient with a faint violet glow,
+// so the background reads as soft depth rather than a flat fill.
+@interface CPBackgroundView : NSView @end
+@implementation CPBackgroundView
+- (void)drawRect:(NSRect)dirtyRect {
+    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(237, 233, 248)
+                                                  endingColor:CPColor(248, 247, 252)];
+    [g drawInRect:self.bounds angle:-90];
+    NSColor *glow = [CPAccent() colorWithAlphaComponent:0.12];
+    NSGradient *rg = [[NSGradient alloc] initWithStartingColor:glow
+                                                   endingColor:[CPAccent() colorWithAlphaComponent:0]];
+    NSPoint ctr = NSMakePoint(NSWidth(self.bounds) * 0.82, NSHeight(self.bounds) * 0.90);
+    [rg drawFromCenter:ctr radius:0 toCenter:ctr radius:NSWidth(self.bounds) * 0.55 options:0];
+}
+@end
 
 // ── A top-down (flipped) container so cards stack from the top of the scroll view.
 @interface FlippedView : NSView @end
@@ -177,7 +254,8 @@ static NSTextField *Label(NSString *s) {
         backing:NSBackingStoreBuffered defer:NO];
     w.title = @"Claude Profiles";
     w.minSize = NSMakeSize(480, 420);
-    w.backgroundColor = CPCream();
+    w.backgroundColor = CPBg();
+    w.contentView = [CPBackgroundView new];   // subtle gradient backdrop
     w.titlebarAppearsTransparent = YES;   // let the cream extend into the title bar
     [w center];
     self.window = w;
@@ -187,10 +265,9 @@ static NSTextField *Label(NSString *s) {
     NSTextField *h = [NSTextField labelWithString:@"Claude Profiles"];
     h.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     h.textColor = CPInk();
-    NSButton *newBtn = CPPrimaryButton(@"  + New Profile  ", self, @selector(newProfile:));
+    NSButton *newBtn = CPPrimaryButton(@"+ New Profile", self, @selector(newProfile:));
     newBtn.keyEquivalent = @"n"; newBtn.keyEquivalentModifierMask = NSEventModifierFlagCommand;
-    NSButton *syncBtn = [NSButton buttonWithTitle:@"Sync" target:self action:@selector(syncNow:)];
-    syncBtn.bezelStyle = NSBezelStyleRounded;
+    NSButton *syncBtn = CPSecondaryButton(@"Sync", self, @selector(syncNow:));
     NSStackView *headerRight = [NSStackView stackViewWithViews:@[syncBtn, newBtn]];
     headerRight.spacing = 8;
     NSStackView *header = [NSStackView stackViewWithViews:@[h, [NSView new], headerRight]];
@@ -315,10 +392,10 @@ static NSTextField *Label(NSString *s) {
 
     NSButton *launch = CPPrimaryButton(@"Launch Desktop", self, @selector(launchDesktop:));
     launch.tag = i;
-    NSButton *open = [NSButton buttonWithTitle:@"Open Code" target:self action:@selector(openCode:)];
-    open.bezelStyle = NSBezelStyleRounded; open.tag = i;
-    NSButton *more = [NSButton buttonWithTitle:@"⋯" target:self action:@selector(showRowMenu:)];
-    more.bezelStyle = NSBezelStyleRounded; more.tag = i;
+    NSButton *open = CPSecondaryButton(@"Open Code", self, @selector(openCode:));
+    open.tag = i;
+    NSButton *more = CPSecondaryButton(@"⋯", self, @selector(showRowMenu:));
+    more.tag = i;
     [more.widthAnchor constraintEqualToConstant:34].active = YES;
 
     NSStackView *actions = [NSStackView stackViewWithViews:@[launch, open, more]];
@@ -365,15 +442,17 @@ static NSTextField *Label(NSString *s) {
 // Run a potentially-slow block off the main thread; disable `button` meanwhile.
 - (void)runBusy:(NSButton *)button title:(NSString *)busyTitle
           block:(NSError *(^)(void))block done:(void (^)(NSError *))done {
-    // Preserve the button's attributed styling (coral primary buttons use white text).
-    NSAttributedString *orig = button.attributedTitle;
-    NSDictionary *attrs = orig.length ? [orig attributesAtIndex:0 effectiveRange:NULL] : @{};
-    button.attributedTitle = [[NSAttributedString alloc] initWithString:busyTitle attributes:attrs];
+    // Works for both the custom CPButton (draws from .title) and plain NSButtons.
+    NSString *orig = button.title;
+    button.title = busyTitle;
+    [button invalidateIntrinsicContentSize];
     button.enabled = NO;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *err = block();
         dispatch_async(dispatch_get_main_queue(), ^{
-            button.enabled = YES; button.attributedTitle = orig;
+            button.enabled = YES;
+            button.title = orig;
+            [button invalidateIntrinsicContentSize];
             if (done) done(err);
         });
     });

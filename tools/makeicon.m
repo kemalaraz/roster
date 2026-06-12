@@ -1,6 +1,7 @@
-// makeicon.m — render the Claude Profiles app icon at 1024×1024 (native, no Python).
-// Design: a Claude-coral squircle (gradient) with a fanned stack of three cream
-// "profile" cards and a coral AI-sparkle on the front card. Writes a PNG to argv[1].
+// makeicon.m — render the app icon at 1024×1024 (native, no Python).
+// Design: a violet→indigo squircle (gradient) with a fanned stack of three
+// "profile" cards and an app-agnostic avatar glyph on the front card — a profile
+// manager for any AI app, not tied to one brand. Writes a PNG to argv[1].
 //
 //   clang -fobjc-arc -framework CoreGraphics -framework ImageIO \
 //         -framework CoreFoundation -framework CoreServices -o makeicon makeicon.m
@@ -23,23 +24,20 @@ static CGPathRef roundedRect(CGRect r, CGFloat rad) {
     return CGPathCreateWithRoundedRect(r, rad, rad, NULL);
 }
 
-// A 4-point AI "sparkle" (concave star) centered at (cx,cy), tip radius R.
-static void addSparkle(CGContextRef c, CGFloat cx, CGFloat cy, CGFloat R) {
-    CGFloat ri = R * 0.34;               // inner valley radius
-    CGFloat d  = ri * 0.70710678;        // diagonal component
-    CGMutablePathRef p = CGPathCreateMutable();
-    CGPathMoveToPoint(p, NULL, cx,       cy + R);   // top tip
-    CGPathAddLineToPoint(p, NULL, cx + d, cy + d);
-    CGPathAddLineToPoint(p, NULL, cx + R, cy);      // right tip
-    CGPathAddLineToPoint(p, NULL, cx + d, cy - d);
-    CGPathAddLineToPoint(p, NULL, cx,     cy - R);  // bottom tip
-    CGPathAddLineToPoint(p, NULL, cx - d, cy - d);
-    CGPathAddLineToPoint(p, NULL, cx - R, cy);      // left tip
-    CGPathAddLineToPoint(p, NULL, cx - d, cy + d);
-    CGPathCloseSubpath(p);
-    CGContextAddPath(c, p);
+// An app-agnostic avatar glyph (head + shoulders) centered on the front card.
+static void addAvatar(CGContextRef c, CGFloat cx, CGFloat cy, CGColorRef col) {
+    CGContextSetFillColorWithColor(c, col);
+    // Shoulders — top half of a disc, the curve facing up toward the head.
+    CGMutablePathRef sh = CGPathCreateMutable();
+    CGPathAddArc(sh, NULL, cx, cy - 70, 140, 0, M_PI, false);
+    CGPathCloseSubpath(sh);
+    CGContextAddPath(c, sh);
     CGContextFillPath(c);
-    CGPathRelease(p);
+    CGPathRelease(sh);
+    // Head — circle above, overlapping the shoulders into one silhouette.
+    CGFloat hR = 62;
+    CGContextAddEllipseInRect(c, CGRectMake(cx - hR, (cy + 51) - hR, 2*hR, 2*hR));
+    CGContextFillPath(c);
 }
 
 // Draw one cream card centered at (cx,cy), rotated `deg`, with a soft shadow.
@@ -48,9 +46,9 @@ static void drawCard(CGContextRef c, CGFloat cx, CGFloat cy, CGFloat deg,
     CGContextSaveGState(c);
     CGContextTranslateCTM(c, cx, cy);
     CGContextRotateCTM(c, deg * M_PI / 180.0);
-    CGContextSetShadowWithColor(c, CGSizeMake(0, -10), 26, rgb(0.20, 0.07, 0.03, 0.33));
+    CGContextSetShadowWithColor(c, CGSizeMake(0, -10), 26, rgb(0.10, 0.05, 0.22, 0.35));
     CGPathRef card = roundedRect(CGRectMake(-w/2, -h/2, w, h), 58);
-    CGContextSetFillColorWithColor(c, rgb(0.972, 0.957, 0.930, alpha));  // warm cream
+    CGContextSetFillColorWithColor(c, rgb(0.980, 0.975, 1.000, alpha));  // cool white (bg bleeds → lavender)
     CGContextAddPath(c, card);
     CGContextFillPath(c);
     CGPathRelease(card);
@@ -70,8 +68,8 @@ int main(int argc, const char *argv[]) {
     CGContextAddPath(c, squircle);
     CGContextClip(c);
     CGFloat locs[2] = {0.0, 1.0};
-    CGColorRef gcols[2] = { rgb(0.910, 0.553, 0.408, 1),   // lighter coral (top)
-                            rgb(0.776, 0.357, 0.231, 1) }; // deep terracotta (bottom)
+    CGColorRef gcols[2] = { rgb(0.553, 0.420, 0.945, 1),   // bright violet (top)
+                            rgb(0.270, 0.170, 0.500, 1) }; // deep indigo (bottom)
     CFArrayRef arr = CFArrayCreate(NULL, (const void **)gcols, 2, &kCFTypeArrayCallBacks);
     CGGradientRef grad = CGGradientCreateWithColors(cs, arr, locs);
     CGContextDrawLinearGradient(c, grad, CGPointMake(0, S), CGPointMake(0, 0), 0);
@@ -89,11 +87,8 @@ int main(int argc, const char *argv[]) {
     drawCard(c, 512 + 118, 506, -12, cw, ch, 0.80);   // back-right
     drawCard(c, 512,       524,   0, cw, ch, 1.00);   // front
 
-    // ── Coral AI-sparkle on the front card ──────────────────────────────────
-    CGContextSetFillColorWithColor(c, rgb(0.812, 0.396, 0.267, 1));   // Claude coral
-    addSparkle(c, 512, 524, 96);
-    CGContextSetFillColorWithColor(c, rgb(0.812, 0.396, 0.267, 0.85));
-    addSparkle(c, 512 + 96, 524 + 118, 34);   // small accent sparkle
+    // ── Violet avatar glyph on the front card ────────────────────────────────
+    addAvatar(c, 512, 520, rgb(0.486, 0.361, 0.902, 1));   // #7C5CE6 accent violet
 
     // ── Encode PNG ──────────────────────────────────────────────────────────
     CGImageRef img = CGBitmapContextCreateImage(c);
