@@ -18,7 +18,7 @@ bundled interpreter. The whole thing is one Mach-O binary plus an icon.
 ## Layout
 
 ```
-claude-profiles/
+roster/
 ├── app/
 │   ├── src/
 │   │   ├── Models.h/.m      # Paths, AppDescriptor, Profile, ProfileStore

@@ -16,7 +16,7 @@ just download and double-click.
 
 ### Option A — download the prebuilt app
 
-1. Go to the **[latest release](https://github.com/kemalaraz/claude-profiles/releases/latest)**
+1. Go to the **[latest release](https://github.com/kemalaraz/roster/releases/latest)**
    and download `Roster.app.zip`.
 2. Unzip it and drag **Roster.app** to `/Applications`.
 3. First launch: double-click it, then approve it once in
@@ -30,8 +30,8 @@ Requires only the **Xcode Command Line Tools** (`xcode-select --install`) — no
 Python, no conda, no full Xcode.
 
 ```bash
-git clone https://github.com/kemalaraz/claude-profiles
-cd claude-profiles
+git clone https://github.com/kemalaraz/roster
+cd roster
 make install-app
 ```
 

@@ -1,7 +1,7 @@
 // makeicon.m — render the app icon at 1024×1024 (native, no Python).
 // Design: a dark mallard green-blue Apple-style squircle (superellipse) with a soft drop
-// shadow, a fanned stack of three "profile" cards, and a clean app-agnostic avatar
-// on the front card. Sized to match macOS system icons. Writes a PNG to argv[1].
+// shadow, a profile card (one peeking behind for depth), and a roster (group of three
+// avatars) on the front card. Sized to match macOS system icons. Writes a PNG to argv[1].
 //
 //   clang -fobjc-arc -framework CoreGraphics -framework ImageIO \
 //         -framework CoreFoundation -framework CoreServices -o makeicon makeicon.m
@@ -43,16 +43,13 @@ static CGPathRef roundedRect(CGRect r, CGFloat rad) {
     return CGPathCreateWithRoundedRect(r, rad, rad, NULL);
 }
 
-// A clean person silhouette: a head circle above a smooth semi-elliptical shoulder
-// dome, with a small gap so they read as one tidy glyph (no notch).
-static void addAvatar(CGContextRef c, CGFloat cx, CGColorRef col) {
+// One clean person silhouette: a head circle above a smooth semi-elliptical
+// shoulder dome (drawn via a y-scaled semicircle), with a small gap between them.
+static void drawPerson(CGContextRef c, CGFloat cx, CGFloat headCY, CGFloat headR,
+                       CGFloat baseY, CGFloat sw, CGFloat domeH, CGColorRef col) {
     CGContextSetFillColorWithColor(c, col);
-    // Head.
-    CGFloat headR = 60, headCY = 576;
     CGContextAddEllipseInRect(c, CGRectMake(cx - headR, headCY - headR, 2*headR, 2*headR));
     CGContextFillPath(c);
-    // Shoulder dome — top half of a wide ellipse, drawn via a y-scaled semicircle.
-    CGFloat baseY = 432, sw = 134, domeH = 78;   // dome top ≈ 510, gap to head ≈ 6
     CGContextSaveGState(c);
     CGContextTranslateCTM(c, cx, baseY);
     CGContextScaleCTM(c, 1.0, domeH / sw);
@@ -64,6 +61,16 @@ static void addAvatar(CGContextRef c, CGFloat cx, CGColorRef col) {
     CGContextFillPath(c);
     CGPathRelease(dome);
     CGContextRestoreGState(c);
+}
+
+// A "roster": a group of three avatars — two lighter figures flanking a larger,
+// darker centre figure drawn on top, reading as a team of profiles.
+static void addRoster(CGContextRef c, CGFloat cx) {
+    CGColorRef side = rgb(0.169, 0.478, 0.400, 1);   // #2B7A66 lighter mallard (behind)
+    CGColorRef mid  = rgb(0.102, 0.361, 0.298, 1);   // #1A5C4C dark mallard (front)
+    drawPerson(c, cx - 78, 545, 36, 472, 74,  60, side);   // left
+    drawPerson(c, cx + 78, 545, 36, 472, 74,  60, side);   // right
+    drawPerson(c, cx,      576, 50, 470, 116, 76, mid);    // centre (on top)
 }
 
 static void drawCard(CGContextRef c, CGFloat cx, CGFloat cy, CGFloat deg,
@@ -115,14 +122,12 @@ int main(int argc, const char *argv[]) {
                                 CGPointMake(cx, S*0.72), S*0.44, 0);
     CGContextRestoreGState(c);
 
-    // ── Fanned stack of three profile cards ─────────────────────────────────
-    CGFloat cw = 286, ch = 364;
-    drawCard(c, cx - 112, 506,  12, cw, ch, 0.62);   // back-left
-    drawCard(c, cx + 112, 506, -12, cw, ch, 0.80);   // back-right
-    drawCard(c, cx,       524,   0, cw, ch, 1.00);   // front
+    // ── Profile card (with one peeking behind for depth) ─────────────────────
+    drawCard(c, cx - 66, 512,  9, 300, 356, 0.50);   // back card peeking
+    drawCard(c, cx,      524,  0, 320, 372, 1.00);   // front card
 
-    // ── Avatar on the front card ────────────────────────────────────────────
-    addAvatar(c, cx, rgb(0.102, 0.361, 0.298, 1));   // #1A5C4C mallard green accent
+    // ── Roster: a group of three avatars on the front card ───────────────────
+    addRoster(c, cx);
 
     // ── Encode PNG ──────────────────────────────────────────────────────────
     CGImageRef img = CGBitmapContextCreateImage(c);
