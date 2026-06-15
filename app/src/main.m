@@ -4,6 +4,7 @@
 #import "Models.h"
 #import "Managers.h"
 #import "UI.h"
+#import "Picker.h"
 
 static void pout(NSString *fmt, ...) {
     va_list ap; va_start(ap, fmt);
@@ -140,6 +141,8 @@ int main(int argc, const char *argv[]) {
         if ([cmd isEqualToString:@"--create"] || [cmd isEqualToString:@"create"])
             return args.count > 1 ? cliCreate(args[1], argAfter(args, @"--emoji"), argAfter(args, @"--app"))
                                   : (perr(@"usage: --create <name> [--emoji X] [--app id]"), 1);
+        if ([cmd isEqualToString:@"--pick"])
+            return args.count > 1 ? RunPicker(args[1]) : (perr(@"usage: --pick <claude|codex>"), 1);
         if ([cmd isEqualToString:@"--gui"]) return RunGUIApp();
 
         perr(@"Unknown command: %@\nCommands: --list --create --setup --launch --code --sync --delete (no args = GUI)", cmd);

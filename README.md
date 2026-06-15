@@ -126,6 +126,22 @@ CP="/Applications/Roster.app/Contents/MacOS/Roster"
 
 Running it with no arguments opens the GUI.
 
+### Terminal profile picker
+
+Install shims so typing `claude` (and `codex`, once installed) in any terminal pops a
+small styled picker — choose a profile and it runs the real CLI with that profile's
+config, and titles the window with the account:
+
+```bash
+bash tools/install-cli.sh     # adds ~/.roster/bin to PATH; open a new terminal
+claude                        # ↑/↓ pick a profile (remembers your last choice)
+claude --profile work         # skip the prompt
+```
+
+It stays out of the way: non-interactive use (scripts/pipes) and anything launched
+with `CLAUDE_CONFIG_DIR`/`CODEX_HOME` already set pass straight through to the real
+binary with no prompt. "Default" always gives you your plain global `~/.claude`.
+
 ---
 
 ## After a Claude Desktop update

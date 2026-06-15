@@ -273,11 +273,14 @@ static NSString *ShQuote(NSString *s) {
                               withIntermediateDirectories:YES attributes:nil error:nil];
     NSString *claudeBin = [self _resolveClaude];
 
-    // Build the command the terminal's shell will run. Set the env var, run claude,
+    // Title the terminal window/tab with the account (OSC 0), so it doesn't just say
+    // "bash". Set the command the terminal's shell will run: title, env var, claude,
     // then drop back to an interactive login shell so the window stays open.
+    NSString *title = [NSString stringWithFormat:@"%@ %@ · Claude Code",
+                       profile.emoji ?: @"", profile.displayName];
     NSString *cmd = [NSString stringWithFormat:
-        @"export CLAUDE_CONFIG_DIR=%@; %@; exec bash -l",
-        ShQuote(configDir), ShQuote(claudeBin)];
+        @"printf '\\033]0;%%s\\007' %@; export CLAUDE_CONFIG_DIR=%@; %@; exec bash -l",
+        ShQuote(title), ShQuote(configDir), ShQuote(claudeBin)];
 
     NSString *ghostty = @"/Applications/Ghostty.app/Contents/MacOS/ghostty";
     if ([[NSFileManager defaultManager] fileExistsAtPath:ghostty]) {
