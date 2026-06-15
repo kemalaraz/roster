@@ -24,12 +24,18 @@
   that deletes that folder to reclaim space; it re-downloads on next Cowork use. The
   base OS image is fixed (~11 GB) and identical across profiles; the writable
   `sessiondata.img` is sparse and grows with use up to a cap.
-- **Per-profile Dock identity (name/icon).** Investigate showing "Claude (Work)" etc.
-  in the Dock again. Hard in the genuine-app model: the Dock name/icon come from the
-  app bundle's *signed* `Info.plist`, and any change requires re-signing — which is
-  exactly what breaks Cowork. A wrapper/launcher app doesn't cleanly hold the Dock
-  tile either. Likely only solvable with a notarized signing identity (sign a renamed
-  copy with a real Developer ID so both Cowork and per-profile identity work).
+- **Apple Developer ID certificate (unlocks per-profile identity).** Enroll in the
+  Apple Developer Program ($99/yr) to get a "Developer ID Application" certificate.
+  With a genuine Developer ID signature, a *renamed* per-profile copy
+  (`Claude (Work).app`, custom `CFBundleName`/`CFBundleDisplayName` + icon) would be
+  accepted by Cowork's signature check **and** show the profile name in the Dock,
+  ⌘-Tab, Finder, and the Dock hover tooltip. This is the only way to get both
+  per-profile identity AND working Cowork. Blocks:
+    - Per-profile Dock identity (name/icon) — currently impossible: the Dock label
+      comes from the bundle's *signed* `Info.plist`, and changing it requires
+      re-signing, which an ad-hoc signature can't do without breaking Cowork.
+    - Profile name on hover over the running app (same root cause).
+    - Removing the first-launch "Open Anyway" Gatekeeper step (notarize the build).
 
 - **Code-sign + notarize** with a Developer ID so first launch needs no right-click,
   and ship a notarized DMG / Homebrew cask in Releases.
