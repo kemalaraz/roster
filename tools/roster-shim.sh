@@ -34,11 +34,12 @@ if [ -n "$prof" ]; then                        # explicit --profile (works anywh
   slug="$(printf '%s' "$prof" | tr '[:upper:] _' '[:lower:]--')"
   dir="$HOME/.claude-profiles/$slug/$SUBDIR"; mkdir -p "$dir"
 elif [ -t 0 ] && [ -t 1 ]; then                # interactive → styled picker
-  dir="$("$ROSTER" --pick "$TOOL")"            # empty = Default/cancel
+  dir="$("$ROSTER" --pick "$TOOL")"; rc=$?     # rc!=0 → cancelled (esc)
+  [ "$rc" -ne 0 ] && exit 0                     # cancel → open nothing
 else
   exec "$REAL" "${args[@]}"                     # non-interactive → global, no prompt
 fi
-[ -z "$dir" ] && exec "$REAL" "${args[@]}"      # global default
+[ -z "$dir" ] && exec "$REAL" "${args[@]}"      # Default → global ~/.claude
 
 printf '\033]0;%s · %s\007' "$(basename "$(dirname "$dir")")" "$LABEL"   # title = profile
 exec env "$ENVVAR=$dir" "$REAL" "${args[@]}"

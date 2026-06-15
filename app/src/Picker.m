@@ -12,6 +12,8 @@
 #define DIM      ESC "[2m"
 #define GREEN    ESC "[38;2;46;138;112m"   // mallard green accent
 #define CREAM    ESC "[38;2;240;236;232m"
+#define GREENBG  ESC "[48;2;30;87;70m"     // mallard highlight bar
+#define WHITEFG  ESC "[38;2;248;245;242m"
 #define ALTON    ESC "[?1049h" ESC "[?25l" // alt screen + hide cursor
 #define ALTOFF   ESC "[?25h" ESC "[?1049l" // show cursor + leave alt screen
 #define CLEAR    ESC "[H" ESC "[2J"
@@ -44,22 +46,29 @@ static int readKey(int fd, int *digit) {
     return K_OTHER;
 }
 
+// One menu row: a full-width mallard highlight bar when selected, plain otherwise.
+static NSString *row(NSString *emoji, NSString *name, BOOL selected, BOOL dim) {
+    const int W = 30;
+    NSMutableString *c = [NSMutableString stringWithFormat:@" %@  %@", emoji, name];
+    while ((int)c.length < W) [c appendString:@" "];
+    if (selected)
+        return [NSString stringWithFormat:@"   %s%s%s%@%s\r\n", GREENBG, WHITEFG, BOLD, c, RESET];
+    return [NSString stringWithFormat:@"   %s%@%s\r\n", dim ? DIM : CREAM, c, RESET];
+}
+
 static void draw(int fd, NSArray<Profile *> *profs, NSInteger sel, NSString *tool) {
     NSMutableString *s = [NSMutableString stringWithUTF8String:CLEAR];
-    [s appendFormat:@"\r\n  %s%sRoster%s  %s· open %@ as…%s\r\n", BOLD, GREEN, RESET, DIM, tool, RESET];
-    [s appendFormat:@"  %s──────────────────────────────%s\r\n\r\n", DIM, RESET];
+    [s appendString:@"\r\n"];
+    [s appendFormat:@"   %s%s🐿  Roster%s   %schoose a profile for %@%s\r\n\r\n",
+        BOLD, CREAM, RESET, DIM, tool, RESET];
     NSInteger i = 0;
     for (Profile *p in profs) {
-        BOOL on = (i == sel);
-        [s appendFormat:@"%s%@  %@%s\r\n",
-            on ? "  " GREEN BOLD "❯ " : "    ",
-            p.emoji ?: @"👤", p.displayName, RESET];
+        [s appendString:row(p.emoji ?: @"👤", p.displayName, i == sel, NO)];
         i++;
     }
     BOOL defOn = (sel == (NSInteger)profs.count);
-    [s appendFormat:@"%s○  Default %s(global ~/.claude)%s\r\n",
-        defOn ? "  " GREEN BOLD "❯ " : "    ", defOn ? "" : DIM, RESET];
-    [s appendFormat:@"\r\n  %s↑/↓ move · ⏎ open · esc cancel · 0–9 quick%s\r\n", DIM, RESET];
+    [s appendString:row(@"·", @"Default — global ~/.claude", defOn, YES)];
+    [s appendFormat:@"\r\n   %s↑ ↓  move    ⏎  open    esc  cancel    0–9  jump%s\r\n", DIM, RESET];
     wr(fd, s);
 }
 
@@ -114,7 +123,7 @@ int RunPicker(NSString *tool) {
     tcsetattr(fd, TCSANOW, &old);
     close(fd);
 
-    if (cancelled) return 0;                       // print nothing → run default
+    if (cancelled) return 130;                     // non-zero → caller opens nothing
     if (sel == (NSInteger)profs.count) {           // Default
         [@"default" writeToFile:lastPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
         return 0;
