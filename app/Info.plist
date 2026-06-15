@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>Claude Profiles</string>
+    <string>Roster</string>
     <key>CFBundleDisplayName</key>
-    <string>Claude Profiles</string>
+    <string>Roster</string>
     <key>CFBundleIdentifier</key>
-    <string>com.claudeprofiles.app</string>
+    <string>com.roster.app</string>
     <key>CFBundleExecutable</key>
-    <string>ClaudeProfiles</string>
+    <string>Roster</string>
     <key>CFBundleIconFile</key>
     <string>icon</string>
     <key>CFBundlePackageType</key>

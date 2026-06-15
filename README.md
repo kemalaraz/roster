@@ -1,4 +1,4 @@
-# Claude Profiles
+# Roster
 
 Run multiple Claude Desktop and Claude Code accounts **simultaneously** on macOS — without logging out and back in.
 
@@ -17,8 +17,8 @@ just download and double-click.
 ### Option A — download the prebuilt app
 
 1. Go to the **[latest release](https://github.com/kemalaraz/claude-profiles/releases/latest)**
-   and download `Claude-Profiles.app.zip`.
-2. Unzip it and drag **Claude Profiles.app** to `/Applications`.
+   and download `Roster.app.zip`.
+2. Unzip it and drag **Roster.app** to `/Applications`.
 3. First launch: double-click it, then approve it once in
    **System Settings → Privacy & Security → "Open Anyway"** (the app is ad-hoc
    signed, not notarized, so macOS asks the first time — see
@@ -43,7 +43,7 @@ Gatekeeper prompt.)
 
 A **downloaded** copy is tagged by the browser, so the first launch is blocked with
 "unverified developer." Approve it once: **System Settings → Privacy & Security**,
-scroll to the "Claude Profiles was blocked" notice, click **Open Anyway**, then
+scroll to the "Roster was blocked" notice, click **Open Anyway**, then
 launch again. (On macOS 14 and earlier you can instead right-click the app → **Open**.)
 This is only because the app isn't notarized with a paid Apple Developer ID; building
 from source (Option B) avoids it entirely.
@@ -91,7 +91,7 @@ never copied or modified, it keeps Anthropic's genuine notarized signature.
 
 **Trade-off:** since every profile is the same genuine bundle, they all appear as
 "Claude" in the Dock/⌘-Tab (no per-profile icon), and you reopen a profile via the
-Claude Profiles app rather than a standalone Desktop icon.
+Roster.app rather than a standalone Desktop icon.
 
 **Claude Code isolation.** Claude Code honours `CLAUDE_CONFIG_DIR`. Each profile
 gets `~/.claude-profiles/<name>/claude-code/`, so sessions, settings, and history
@@ -113,7 +113,7 @@ The same binary doubles as a CLI (handy for scripting; also what the auto-sync
 LaunchAgent calls):
 
 ```bash
-CP="/Applications/Claude Profiles.app/Contents/MacOS/ClaudeProfiles"
+CP="/Applications/Roster.app/Contents/MacOS/Roster"
 
 "$CP" --list                      # list profiles + status
 "$CP" --create work --emoji 💼    # create a profile

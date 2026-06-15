@@ -1,8 +1,8 @@
-# Claude Profiles — Architecture
+# Roster — Architecture
 
 ## Overview
 
-Claude Profiles lets multiple Claude Desktop and Claude Code instances run
+Roster lets multiple Claude Desktop and Claude Code instances run
 simultaneously, each with a fully isolated account. It is a single **native
 Objective-C / Cocoa** macOS app — no Python, no conda, no Swift runtime, no
 bundled interpreter. The whole thing is one Mach-O binary plus an icon.
@@ -29,7 +29,7 @@ claude-profiles/
 │   └── build.sh             # clang compile → assemble .app → ad-hoc sign
 ├── resources/icon.icns
 ├── Makefile                 # app / install-app / run / clean
-└── build/Claude Profiles.app
+└── build/Roster.app
 ```
 
 ## Build
@@ -37,7 +37,7 @@ claude-profiles/
 `app/build.sh` (invoked by `make app`):
 
 1. `clang -fobjc-arc -fmodules -framework Cocoa -mmacosx-version-min=13.0` over
-   `app/src/*.m` → `Contents/MacOS/ClaudeProfiles`
+   `app/src/*.m` → `Contents/MacOS/Roster`
 2. Copy `Info.plist` and `icon.icns` into the bundle
 3. Ad-hoc codesign the bundle
 
@@ -82,7 +82,7 @@ no helper rename, no re-sign, no quarantine handling, and **no post-update sync*
 
 **Trade-offs:** all profiles share one bundle id, so they appear identically as
 "Claude" in the Dock/⌘-Tab (no per-profile icon), and a profile is reopened via the
-Claude Profiles app rather than a standalone Desktop icon. Keychain is shared, but
+Roster.app rather than a standalone Desktop icon. Keychain is shared, but
 since the session lives in the data dir this doesn't leak logins.
 
 ### Claude Code (`CodeManager`)

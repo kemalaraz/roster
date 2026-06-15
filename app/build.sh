@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the standalone Claude Profiles.app — native Objective-C / Cocoa, no
+# Build the standalone Roster.app — native Objective-C / Cocoa, no
 # external dependencies (no Python, no conda, no Swift runtime). Requires only
 # the Xcode Command Line Tools (clang).
 set -euo pipefail
@@ -7,8 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_DIR="$ROOT/app"
 BUILD="$ROOT/build"
-APP="$BUILD/Claude Profiles.app"
-BIN="ClaudeProfiles"
+APP="$BUILD/Roster.app"
+BIN="Roster"
 
 echo "→ Cleaning…"
 rm -rf "$APP"

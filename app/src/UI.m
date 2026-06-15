@@ -7,12 +7,12 @@
 static NSColor *CPColor(int r, int g, int b) {
     return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
 }
-static NSColor *CPAccent(void)    { return CPColor( 43, 122, 102); } // #2B7A66 mallard green (matches icon)
-static NSColor *CPAccentDeep(void){ return CPColor( 28,  90,  74); } // #1C5A4A pressed/deep
+static NSColor *CPAccent(void)    { return CPColor( 30,  87,  70); } // #1E5746 dark mallard green (matches icon body)
+static NSColor *CPAccentDeep(void){ return CPColor( 20,  63,  51); } // #143F33 pressed/deep
 static NSColor *CPBg(void)        { return CPColor( 79,  41,  59); } // #4F293B chocolate cosmos (window)
-static NSColor *CPCard(void)      { return CPColor(101,  80,  55); } // #654F37 espresso (lightened a bit)
-static NSColor *CPSurface(void)   { return CPColor(124, 100,  72); } // lighter espresso (secondary buttons)
-static NSColor *CPBorder(void)    { return CPColor(134, 110,  80); } // subtle espresso edge
+static NSColor *CPCard(void)      { return CPColor( 44,  42,  51); } // #2C2A33 slate charcoal (profile boxes)
+static NSColor *CPSurface(void)   { return CPColor( 60,  58,  70); } // #3C3A46 lighter slate (secondary buttons)
+static NSColor *CPBorder(void)    { return CPColor( 78,  73,  92); } // #4E495C subtle slate edge
 static NSColor *CPInk(void)       { return CPColor(242, 233, 237); } // cream text (on dark)
 static NSColor *CPInkSoft(void)   { return CPColor(198, 182, 188); } // muted cream secondary text
 
@@ -254,7 +254,7 @@ static NSTextField *Label(NSString *s) {
         styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                    NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable)
         backing:NSBackingStoreBuffered defer:NO];
-    w.title = @"Claude Profiles";
+    w.title = @"Roster";
     w.minSize = NSMakeSize(480, 420);
     w.backgroundColor = CPBg();
     w.contentView = [CPBackgroundView new];   // gradient backdrop
@@ -266,7 +266,7 @@ static NSTextField *Label(NSString *s) {
     NSView *root = w.contentView;
 
     // Header
-    NSTextField *h = [NSTextField labelWithString:@"Claude Profiles"];
+    NSTextField *h = [NSTextField labelWithString:@"Roster"];
     h.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
     h.textColor = CPColor(250, 248, 251);   // near-white on the dark top
     NSButton *newBtn = CPPrimaryButton(@"+ New Profile", self, @selector(newProfile:));
@@ -662,7 +662,7 @@ static void buildMainMenu(void) {
     NSMenuItem *appItem = [NSMenuItem new];
     [mainMenu addItem:appItem];
     NSMenu *appMenu = [NSMenu new];
-    NSString *name = @"Claude Profiles";
+    NSString *name = @"Roster";
     [appMenu addItemWithTitle:[@"About " stringByAppendingString:name] action:NULL keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
     [appMenu addItemWithTitle:[@"Hide " stringByAppendingString:name]
