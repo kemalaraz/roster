@@ -7,12 +7,12 @@
 static NSColor *CPColor(int r, int g, int b) {
     return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
 }
-static NSColor *CPAccent(void)    { return CPColor( 30, 168, 126); } // #1EA87E vivid mallard green (pops on dark)
-static NSColor *CPAccentDeep(void){ return CPColor( 21, 130,  97); } // #158261 pressed/deep
+static NSColor *CPAccent(void)    { return CPColor( 43, 122, 102); } // #2B7A66 mallard green (matches icon)
+static NSColor *CPAccentDeep(void){ return CPColor( 28,  90,  74); } // #1C5A4A pressed/deep
 static NSColor *CPBg(void)        { return CPColor( 79,  41,  59); } // #4F293B chocolate cosmos (window)
-static NSColor *CPCard(void)      { return CPColor( 79,  61,  41); } // #4F3D29 café noir / espresso (profile boxes)
-static NSColor *CPSurface(void)   { return CPColor( 96,  76,  53); } // lighter espresso (secondary buttons)
-static NSColor *CPBorder(void)    { return CPColor(112,  92,  66); } // subtle espresso edge
+static NSColor *CPCard(void)      { return CPColor(101,  80,  55); } // #654F37 espresso (lightened a bit)
+static NSColor *CPSurface(void)   { return CPColor(124, 100,  72); } // lighter espresso (secondary buttons)
+static NSColor *CPBorder(void)    { return CPColor(134, 110,  80); } // subtle espresso edge
 static NSColor *CPInk(void)       { return CPColor(242, 233, 237); } // cream text (on dark)
 static NSColor *CPInkSoft(void)   { return CPColor(198, 182, 188); } // muted cream secondary text
 
@@ -92,11 +92,14 @@ static NSButton *CPSecondaryButton(NSString *title, id target, SEL action) {
 @interface CPBackgroundView : NSView @end
 @implementation CPBackgroundView
 - (void)drawRect:(NSRect)dirtyRect {
-    // Vertical fade: chocolate-cosmos #4F293B at the top (matching the title bar)
-    // easing slowly down to white at the bottom.
-    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(79, 41, 59)
-                                                  endingColor:[NSColor whiteColor]];
-    [g drawInRect:self.bounds angle:-90];   // -90° → starting color at top, ending at bottom
+    // Vertical fade: chocolate-cosmos #4F293B at the top (matching the title bar),
+    // holding the colour through the upper half and easing to a soft off-white (not
+    // pure white) at the bottom.
+    NSGradient *g = [[NSGradient alloc] initWithColorsAndLocations:
+                     CPColor( 79,  41,  59), 0.0,
+                     CPColor(150, 104, 122), 0.55,
+                     CPColor(236, 230, 233), 1.0, nil];
+    [g drawInRect:self.bounds angle:-90];   // -90° → first colour at top, last at bottom
 }
 @end
 
@@ -219,8 +222,9 @@ static NSTextField *Label(NSString *s) {
 
 #pragma mark - Main Window Controller
 
-@interface MainWindowController : NSObject
+@interface MainWindowController : NSObject <NSWindowDelegate>
 @property (nonatomic, strong) NSWindow *window;
+@property (nonatomic) BOOL expanded;   // wide window → show overflow actions inline
 @property (nonatomic, strong) ProfileStore *store;
 @property (nonatomic, strong) DesktopManager *dm;
 @property (nonatomic, strong) CodeManager *cm;
@@ -256,6 +260,7 @@ static NSTextField *Label(NSString *s) {
     w.contentView = [CPBackgroundView new];   // gradient backdrop
     w.titlebarAppearsTransparent = YES;       // let the dark backdrop extend into the title bar
     w.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];  // light titlebar text + controls
+    w.delegate = self;   // for windowDidResize: responsive layout
     [w center];
     self.window = w;
     NSView *root = w.contentView;
@@ -263,7 +268,7 @@ static NSTextField *Label(NSString *s) {
     // Header
     NSTextField *h = [NSTextField labelWithString:@"Claude Profiles"];
     h.font = [NSFont systemFontOfSize:22 weight:NSFontWeightBold];
-    h.textColor = CPInk();
+    h.textColor = CPColor(250, 248, 251);   // near-white on the dark top
     NSButton *newBtn = CPPrimaryButton(@"+ New Profile", self, @selector(newProfile:));
     newBtn.keyEquivalent = @"n"; newBtn.keyEquivalentModifierMask = NSEventModifierFlagCommand;
     NSButton *syncBtn = CPSecondaryButton(@"Sync", self, @selector(syncNow:));
@@ -330,17 +335,31 @@ static NSTextField *Label(NSString *s) {
     outer.edgeInsets = NSEdgeInsetsMake(0, 0, 0, 0);
     [root addSubview:outer];
 
+    // Centered, with a max width so the content doesn't sprawl (and look empty) when
+    // the window is full-screen; it still shrinks with small windows.
+    NSLayoutConstraint *preferW = [outer.widthAnchor constraintEqualToConstant:900];
+    preferW.priority = 500;
     [NSLayoutConstraint activateConstraints:@[
         [outer.topAnchor constraintEqualToAnchor:root.topAnchor constant:20],
-        [outer.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:20],
-        [outer.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-20],
         [outer.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-20],
+        [outer.centerXAnchor constraintEqualToAnchor:root.centerXAnchor],
+        [outer.leadingAnchor constraintGreaterThanOrEqualToAnchor:root.leadingAnchor constant:20],
+        [outer.trailingAnchor constraintLessThanOrEqualToAnchor:root.trailingAnchor constant:-20],
+        [outer.widthAnchor constraintLessThanOrEqualToConstant:900],
+        preferW,
         [header.widthAnchor constraintEqualToAnchor:outer.widthAnchor],
         [self.bannerRow.widthAnchor constraintEqualToAnchor:outer.widthAnchor],
         [scroll.widthAnchor constraintEqualToAnchor:outer.widthAnchor],
     ]];
     // Let the scroll view absorb extra vertical space.
     [scroll setContentHuggingPriority:1 forOrientation:NSLayoutConstraintOrientationVertical];
+}
+
+// When the window is wide enough, expand each card's overflow "⋯" into inline
+// action buttons (Set Up / Reveal / Delete) so the extra width isn't wasted.
+- (void)windowDidResize:(NSNotification *)note {
+    BOOL should = self.window.contentView.frame.size.width >= 880;
+    if (should != self.expanded) { self.expanded = should; [self reload]; }
 }
 
 #pragma mark Rendering
@@ -403,11 +422,26 @@ static NSTextField *Label(NSString *s) {
     launch.tag = i;
     NSButton *open = CPSecondaryButton(@"Open Code", self, @selector(openCode:));
     open.tag = i;
-    NSButton *more = CPSecondaryButton(@"⋯", self, @selector(showRowMenu:));
-    more.tag = i;
-    [more.widthAnchor constraintEqualToConstant:34].active = YES;
 
-    NSStackView *actions = [NSStackView stackViewWithViews:@[launch, open, more]];
+    NSMutableArray *acts = [@[launch, open] mutableCopy];
+    if (self.expanded) {
+        // Wide window: show the overflow actions inline instead of hiding them in ⋯.
+        NSButton *setup = CPSecondaryButton([p isDesktopInstalled] ? @"Re-setup" : @"Set Up",
+                                            self, @selector(resetupBtn:));
+        setup.tag = i;
+        NSButton *reveal = CPSecondaryButton(@"Reveal", self, @selector(revealBtn:));
+        reveal.tag = i;
+        NSButton *del = CPSecondaryButton(@"Delete", self, @selector(deleteBtn:));
+        del.tag = i;
+        [acts addObjectsFromArray:@[setup, reveal, del]];
+    } else {
+        NSButton *more = CPSecondaryButton(@"⋯", self, @selector(showRowMenu:));
+        more.tag = i;
+        [more.widthAnchor constraintEqualToConstant:34].active = YES;
+        [acts addObject:more];
+    }
+
+    NSStackView *actions = [NSStackView stackViewWithViews:acts];
     actions.spacing = 6;
 
     NSStackView *rowStack = [NSStackView stackViewWithViews:@[emoji, text, [NSView new], actions]];
@@ -511,11 +545,20 @@ static NSTextField *Label(NSString *s) {
     [menu popUpMenuPositioningItem:nil atLocation:NSMakePoint(0, sender.bounds.size.height) inView:sender];
 }
 
-- (void)resetup:(NSMenuItem *)sender {
-    Profile *p = sender.representedObject;
+// Menu-item entry points (collapsed ⋯ menu) and inline-button entry points (expanded
+// wide layout) share the same core handlers below.
+- (void)resetup:(NSMenuItem *)sender      { [self doSetup:sender.representedObject]; }
+- (void)revealBundle:(NSMenuItem *)sender { [self doReveal:sender.representedObject]; }
+- (void)deleteProfile:(NSMenuItem *)sender{ [self doDelete:sender.representedObject]; }
+- (void)resetupBtn:(NSButton *)sender     { [self doSetup:[self profileForSender:sender]]; }
+- (void)revealBtn:(NSButton *)sender      { [self doReveal:[self profileForSender:sender]]; }
+- (void)deleteBtn:(NSButton *)sender      { [self doDelete:[self profileForSender:sender]]; }
+
+- (void)doSetup:(Profile *)p {
+    if (!p) return;
     NSAlert *a = [NSAlert new];
     a.messageText = [NSString stringWithFormat:@"Set up %@?", [p appDisplayName]];
-    a.informativeText = @"Copies the app, isolates it, and re-signs it. Takes a few seconds.";
+    a.informativeText = @"Ensures the profile's isolated data dir exists. Takes a moment.";
     [a addButtonWithTitle:@"Set Up"]; [a addButtonWithTitle:@"Cancel"];
     [a beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse r) {
         if (r != NSAlertFirstButtonReturn) return;
@@ -529,16 +572,16 @@ static NSTextField *Label(NSString *s) {
     }];
 }
 
-- (void)revealBundle:(NSMenuItem *)sender {
-    Profile *p = sender.representedObject;
+- (void)doReveal:(Profile *)p {
+    if (!p) return;
     if ([p isDesktopInstalled])
         [[NSWorkspace sharedWorkspace] selectFile:[p appBundlePath] inFileViewerRootedAtPath:@""];
     else
         [self alert:@"Not set up yet" info:@"Set up the Desktop bundle first." style:NSAlertStyleInformational];
 }
 
-- (void)deleteProfile:(NSMenuItem *)sender {
-    Profile *p = sender.representedObject;
+- (void)doDelete:(Profile *)p {
+    if (!p) return;
     NSAlert *a = [NSAlert new];
     a.messageText = [NSString stringWithFormat:@"Delete “%@”?", p.displayName];
     a.informativeText = @"Removes its isolated app bundle and all its profile data. This cannot be undone.";
