@@ -7,8 +7,8 @@
 static NSColor *CPColor(int r, int g, int b) {
     return [NSColor colorWithSRGBRed:r/255.0 green:g/255.0 blue:b/255.0 alpha:1.0];
 }
-static NSColor *CPAccent(void)    { return CPColor( 26,  92,  76); } // #1A5C4C dark mallard green-blue
-static NSColor *CPAccentDeep(void){ return CPColor( 18,  63,  52); } // #123F34 pressed/deep
+static NSColor *CPAccent(void)    { return CPColor( 30, 168, 126); } // #1EA87E vivid mallard green (pops on dark)
+static NSColor *CPAccentDeep(void){ return CPColor( 21, 130,  97); } // #158261 pressed/deep
 static NSColor *CPBg(void)        { return CPColor( 79,  41,  59); } // #4F293B chocolate cosmos (window)
 static NSColor *CPCard(void)      { return CPColor( 79,  61,  41); } // #4F3D29 café noir / espresso (profile boxes)
 static NSColor *CPSurface(void)   { return CPColor( 96,  76,  53); } // lighter espresso (secondary buttons)
@@ -92,15 +92,11 @@ static NSButton *CPSecondaryButton(NSString *title, id target, SEL action) {
 @interface CPBackgroundView : NSView @end
 @implementation CPBackgroundView
 - (void)drawRect:(NSRect)dirtyRect {
-    // Dark chocolate-cosmos backdrop — a lifted plum at the top settling into #4F293B.
-    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(105, 58, 80)
-                                                  endingColor:CPColor( 79, 41, 59)];
-    [g drawInRect:self.bounds angle:-90];
-    NSColor *glow = [CPColor(156, 90, 114) colorWithAlphaComponent:0.22];   // soft plum corner glow
-    NSGradient *rg = [[NSGradient alloc] initWithStartingColor:glow
-                                                   endingColor:[CPColor(156, 90, 114) colorWithAlphaComponent:0]];
-    NSPoint ctr = NSMakePoint(NSWidth(self.bounds) * 0.82, NSHeight(self.bounds) * 0.90);
-    [rg drawFromCenter:ctr radius:0 toCenter:ctr radius:NSWidth(self.bounds) * 0.55 options:0];
+    // Vertical fade: chocolate-cosmos #4F293B at the top (matching the title bar)
+    // easing slowly down to white at the bottom.
+    NSGradient *g = [[NSGradient alloc] initWithStartingColor:CPColor(79, 41, 59)
+                                                  endingColor:[NSColor whiteColor]];
+    [g drawInRect:self.bounds angle:-90];   // -90° → starting color at top, ending at bottom
 }
 @end
 
@@ -316,10 +312,15 @@ static NSTextField *Label(NSString *s) {
         [self.cards.bottomAnchor constraintEqualToAnchor:doc.bottomAnchor],
     ]];
 
-    // Footer: auto-sync toggle
+    // Footer: auto-sync toggle. It sits on the white bottom of the fade, so its label
+    // must be dark to stay readable.
     self.autoSyncToggle = [NSButton checkboxWithTitle:@"Auto-sync profiles when Claude updates (on login)"
                                                target:self action:@selector(toggleAutoSync:)];
     self.autoSyncToggle.state = [LaunchAgent isInstalled] ? NSControlStateValueOn : NSControlStateValueOff;
+    self.autoSyncToggle.attributedTitle = [[NSAttributedString alloc]
+        initWithString:self.autoSyncToggle.title attributes:@{
+            NSForegroundColorAttributeName: CPColor(60, 40, 30),
+            NSFontAttributeName: [NSFont systemFontOfSize:[NSFont systemFontSize]]}];
 
     NSStackView *outer = [NSStackView stackViewWithViews:@[header, self.bannerRow, scroll, self.autoSyncToggle]];
     outer.orientation = NSUserInterfaceLayoutOrientationVertical;
