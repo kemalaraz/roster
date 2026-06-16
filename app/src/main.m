@@ -177,12 +177,13 @@ static int cliDoctor(void) {
     else {
         line(BAD, @"picker is NOT active in this terminal");
         if (inRc && shimOK) {
+            NSString *rule = @"────────────────────────────────────────────";
             pout(@"");
-            pout(@"  %@", c(@"1;33", @"┌──────────────────────────────────────────────┐"));
-            pout(@"  %@", c(@"1;33", @"│  This terminal started before setup.           │"));
-            pout(@"  %@", c(@"1;33", @"│  → Open a NEW terminal (or run: exec zsh)      │"));
-            pout(@"  %@", c(@"1;33", @"│    then type `claude` to get the picker.       │"));
-            pout(@"  %@", c(@"1;33", @"└──────────────────────────────────────────────┘"));
+            pout(@"  %@", c(@"1;33", rule));
+            pout(@"  %@", c(@"1;33", @"⚠  This terminal started before setup."));
+            pout(@"  %@", c(@"1;33", @"   Open a NEW terminal (or run: exec zsh),"));
+            pout(@"  %@", c(@"1;33", @"   then type `claude` to get the picker."));
+            pout(@"  %@", c(@"1;33", rule));
         } else {
             hint(@"run: bash tools/install-cli.sh, then open a new terminal");
         }
