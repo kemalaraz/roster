@@ -16,6 +16,9 @@ install_one() {
 echo "→ Installing shims…"
 install_one claude
 if command -v codex >/dev/null 2>&1; then install_one codex; else echo "  • codex not on PATH — skipping (re-run after installing it)"; fi
+# `roster` launcher → the app binary (so `roster doctor` etc. work from the terminal).
+printf '#!/bin/bash\nexec "/Applications/Roster.app/Contents/MacOS/Roster" "$@"\n' > "$BIN/roster"
+chmod +x "$BIN/roster"; echo "  ✓ $BIN/roster"
 
 # Add ~/.roster/bin to PATH (zsh + bash), idempotent + clearly marked.
 add_path() {
@@ -28,4 +31,11 @@ echo "→ Updating shell PATH…"
 add_path "$HOME/.zshrc"
 [ -e "$HOME/.bashrc" ] && add_path "$HOME/.bashrc" || true
 
-echo "✓ Done. Open a new terminal (or 'source ~/.zshrc'), then type 'claude'."
+echo ""
+echo "  ┌────────────────────────────────────────────────┐"
+echo "  │  IMPORTANT: open a NEW terminal window/tab now.  │"
+echo "  │  (Existing terminals won't see the picker until  │"
+echo "  │   you do — or run:  exec zsh)                    │"
+echo "  └────────────────────────────────────────────────┘"
+echo ""
+echo "✓ Done. In a new terminal, type 'claude' to pick a profile, or 'roster doctor' to check setup."

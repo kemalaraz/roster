@@ -140,7 +140,12 @@ claude --profile work         # skip the prompt
 
 It stays out of the way: non-interactive use (scripts/pipes) and anything launched
 with `CLAUDE_CONFIG_DIR`/`CODEX_HOME` already set pass straight through to the real
-binary with no prompt. "Default" always gives you your plain global `~/.claude`.
+binary with no prompt. "Default" always gives you your plain global `~/.claude`, and
+**Esc cancels** (opens nothing).
+
+> Already-open terminals won't see the picker until you **open a new terminal**
+> (they loaded `PATH` before the install). Run **`roster doctor`** to check setup —
+> it verifies the shim, PATH, real binary, and tells you if this shell needs a restart.
 
 ---
 
