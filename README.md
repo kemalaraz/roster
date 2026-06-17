@@ -147,6 +147,44 @@ binary with no prompt. "Default" always gives you your plain global `~/.claude`,
 > (they loaded `PATH` before the install). Run **`roster doctor`** to check setup —
 > it verifies the shim, PATH, real binary, and tells you if this shell needs a restart.
 
+### Checking your setup — `roster doctor`
+
+`roster doctor` reports whether everything is wired up: Roster.app location, Claude
+Desktop install, your profiles, the `claude` shim, the real `claude` binary, the
+`~/.zshrc` PATH line, and **whether the picker is active in the current terminal**.
+
+```bash
+roster doctor
+```
+
+If `roster` isn't found yet (you haven't opened a new terminal since installing the
+shims), run it by full path:
+
+```bash
+"/Applications/Roster.app/Contents/MacOS/Roster" doctor
+```
+
+Sample output:
+
+```
+🐿  Roster  doctor
+
+App
+  ✓ Roster.app at /Applications/Roster.app
+  ✓ Claude Desktop installed (/Applications/Claude.app)
+  ✓ 2 profile(s): work, personal
+
+Terminal CLI
+  ✓ claude shim installed (~/.roster/bin/claude)
+  ✓ real claude found (~/.local/bin/claude)
+  ✓ ~/.roster/bin on PATH in ~/.zshrc
+  ✓ picker is active in THIS shell
+```
+
+If the last line is ✗ ("picker is NOT active in this terminal"), the doctor tells you
+to **open a new terminal** (or run `exec zsh`) — that terminal just started before the
+shims were installed.
+
 ---
 
 ## After a Claude Desktop update
